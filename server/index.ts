@@ -1,6 +1,6 @@
 import express from "express";
 import { registerRoutes } from "./routes";
-import { setupVite, log } from "./vite"; // ⚠ remove serveStatic import, we won’t need it anymore
+import { setupVite, log } from "./vite";
 import { connectDB } from "./db";
 import dotenv from "dotenv";
 import { errorHandler } from "./errorHandler";
@@ -19,11 +19,11 @@ let isMongoConnected = false;
 connectDB()
   .then(() => {
     isMongoConnected = true;
-    console.log("MongoDB connected successfully");
+    console.log("✅ MongoDB connected successfully");
   })
   .catch((err) => {
-    console.error("MongoDB connection error:", err);
-    console.log("Continuing with in-memory storage for development...");
+    console.error("❌ MongoDB connection error:", err);
+    console.log("⚠️ Continuing with in-memory storage for development...");
   });
 
 const app = express();
@@ -72,7 +72,9 @@ app.use((req, res, next) => {
     await setupVite(app, server);
   } else {
     // ✅ Serve frontend build in production
-    const clientDistPath = path.join(__dirname, "../dist"); // use root dist
+    // NOTE: server runs from dist/server.js, so frontend dist is one level up
+    const clientDistPath = path.resolve(__dirname, "../public");
+
     app.use(express.static(clientDistPath));
 
     // Fallback for React Router
