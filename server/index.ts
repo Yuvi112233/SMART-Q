@@ -1,9 +1,15 @@
-import express, { type Request, Response, NextFunction } from "express";
+import express from "express";
 import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
+import { setupVite, log } from "./vite"; // ⚠ remove serveStatic import, we won’t need it anymore
 import { connectDB } from "./db";
 import dotenv from "dotenv";
 import { errorHandler } from "./errorHandler";
+import path from "path";
+import { fileURLToPath } from "url";
+
+// Needed for serving static in production
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Load environment variables
 dotenv.config();
@@ -13,9 +19,9 @@ let isMongoConnected = false;
 connectDB()
   .then(() => {
     isMongoConnected = true;
-    console.log('MongoDB connected successfully');
+    console.log("MongoDB connected successfully");
   })
-  .catch(err => {
+  .catch((err) => {
     console.error("MongoDB connection error:", err);
     console.log("Continuing with in-memory storage for development...");
   });
@@ -24,9 +30,10 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Request logging
 app.use((req, res, next) => {
   const start = Date.now();
-  const path = req.path;
+  const pathName = req.path;
   let capturedJsonResponse: Record<string, any> | undefined = undefined;
 
   const originalResJson = res.json;
@@ -37,16 +44,14 @@ app.use((req, res, next) => {
 
   res.on("finish", () => {
     const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+    if (pathName.startsWith("/api")) {
+      let logLine = `${req.method} ${pathName} ${res.statusCode} in ${duration}ms`;
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
-
       if (logLine.length > 80) {
         logLine = logLine.slice(0, 79) + "…";
       }
-
       log(logLine);
     }
   });
@@ -57,28 +62,34 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
 
-  // Use the custom error handler
+  // Custom error handler
   app.use(errorHandler);
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
   const env = app.get("env") || "development";
+
   if (env === "development") {
+    // Vite dev server for local dev
     await setupVite(app, server);
   } else {
-    serveStatic(app);
+    // ✅ Serve frontend build in production
+    const clientDistPath = path.join(__dirname, "../dist"); // use root dist
+    app.use(express.static(clientDistPath));
+
+    // Fallback for React Router
+    app.get("*", (req, res) => {
+      res.sendFile(path.join(clientDistPath, "index.html"));
+    });
   }
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || '5000', 10);
-  server.listen({
-    port,
-    host: "0.0.0.0",
-  }, () => {
-    log(`serving on port ${port}`);
-  });
+  // Listen on Render’s port
+  const port = parseInt(process.env.PORT || "5000", 10);
+  server.listen(
+    {
+      port,
+      host: "0.0.0.0",
+    },
+    () => {
+      log(`🚀 Serving on port ${port}`);
+    }
+  );
 })();

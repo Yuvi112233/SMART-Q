@@ -10,6 +10,7 @@ export default defineConfig({
     ...(process.env.NODE_ENV !== "production" &&
     process.env.REPL_ID !== undefined
       ? [
+          // dynamically import cartographer only in repl.dev env
           await import("@replit/vite-plugin-cartographer").then((m) =>
             m.cartographer(),
           ),
@@ -25,7 +26,8 @@ export default defineConfig({
   },
   root: path.resolve(import.meta.dirname, "client"),
   build: {
-    outDir: path.resolve(import.meta.dirname, "dist/public"),
+    // ✅ Output to client/dist (matches your Express config)
+    outDir: path.resolve(import.meta.dirname, "client/dist"),
     emptyOutDir: true,
   },
   server: {
