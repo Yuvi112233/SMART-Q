@@ -2,13 +2,11 @@ services:
   - type: web
     name: my-fullstack-app
     env: node
-    plan: free
-    buildCommand: npm run build
+    plan: free   # change if you want paid plan
+    buildCommand: npm install --include=dev && npm run build
     startCommand: npm start
     envVars:
-      - key: NODE_ENV
-        value: production
-      - key: PORT
-        value: 10000
+      - key: NODE_VERSION
+        value: 22.16.0
       - key: MONGO_URI
-        sync: false   # 👈 means you’ll set this value manually in the Render dashboard
+        sync: false   # set this manually in Render dashboard
