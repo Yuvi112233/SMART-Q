@@ -71,9 +71,9 @@ app.use((req, res, next) => {
     // Vite dev server for local dev
     await setupVite(app, server);
   } else {
-    // ✅ Serve frontend build in production
-    // NOTE: server runs from dist/server.js, so frontend dist is one level up
-    const clientDistPath = path.resolve(__dirname, "../public");
+  // ✅ Serve frontend build in production
+// NOTE: server runs from dist/server.js, so frontend dist is at ../client/dist
+const clientDistPath = path.resolve(__dirname, "../client/dist");
 
     app.use(express.static(clientDistPath));
 
