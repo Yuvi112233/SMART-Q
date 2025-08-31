@@ -2,15 +2,16 @@ services:
   - type: web
     name: smartq-backend
     env: node
-    buildCommand: npm install && npm run build
-    startCommand: npm start
+    plan: free
+    buildCommand: cd server && npm install && npm run build
+    startCommand: cd server && npm start
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 5000
-      - key: MONGODB_URI
-        sync: false
+      - key: MONGO_URI
+        sync: false   # You'll add this in Render dashboard manually
       - key: JWT_SECRET
         generateValue: true
       - key: FRONTEND_URL
@@ -19,6 +20,7 @@ services:
   - type: web
     name: smartq-frontend
     env: static
+    plan: free
     buildCommand: cd client && npm install && npm run build
     staticPublishPath: ./client/dist
     envVars:
