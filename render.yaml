@@ -1,28 +1,46 @@
 services:
+  # -------------------------
+  # Backend (Node + Express)
+  # -------------------------
   - type: web
     name: smartq-backend
     env: node
-    plan: free
+    # NOTE: Render runs commands from the repo root
     buildCommand: cd server && npm install && npm run build
     startCommand: cd server && npm start
+    # Do NOT set PORT yourself; Render provides PORT automatically.
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 5000
-      - key: MONGO_URI
-        sync: false   # You'll add this in Render dashboard manually
+      - key: MONGO_URI          # If your code reads MONGO_URI
+        sync: false
+      - key: MONGODB_URI        # If your code reads MONGODB_URI instead
+        sync: false
       - key: JWT_SECRET
         generateValue: true
       - key: FRONTEND_URL
         value: https://smartq-frontend.onrender.com
+    # Optional, but helpful in monorepos—deploy only when /server changes
+    buildFilter:
+      paths:
+        - server/**
 
+  # -------------------------
+  # Frontend (Vite, static)
+  # -------------------------
   - type: web
     name: smartq-frontend
     env: static
-    plan: free
     buildCommand: cd client && npm install && npm run build
-    staticPublishPath: ./client/dist
+    staticPublishPath: client/dist
     envVars:
       - key: VITE_API_URL
         value: https://smartq-backend.onrender.com
+    # SPA rewrite so client-side routing (Wouter) works on refresh/deep links
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    buildFilter:
+      paths:
+        - client/**
