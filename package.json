@@ -4,6 +4,7 @@
   "type": "module",
   "license": "MIT",
   "dependencies": {
+    "@hookform/resolvers/zod": "^3.3.4",
     "@neondatabase/serverless": "^0.10.4",
     "@radix-ui/react-accordion": "^1.2.4",
     "@radix-ui/react-alert-dialog": "^1.1.7",
