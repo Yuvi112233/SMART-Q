@@ -67,7 +67,7 @@ export default function Auth() {
         title: "Welcome back!",
         description: "You've been successfully logged in.",
       });
-      setLocation(data.user.role === 'salon' ? '/dashboard' : '/');
+      setLocation(data.user.role === 'salon_owner' ? '/dashboard' : '/');
     },
     onError: (error) => {
       toast({
@@ -86,7 +86,7 @@ export default function Auth() {
         title: "Welcome to SmartQ!",
         description: "Your account has been created successfully.",
       });
-      setLocation(data.user.role === 'salon' ? '/dashboard' : '/');
+      setLocation(data.user.role === 'salon_owner' ? '/dashboard' : '/');
     },
     onError: (error) => {
       toast({
@@ -204,7 +204,7 @@ export default function Auth() {
                   Account Type
                 </label>
                 <Select 
-                  onValueChange={(value) => registerForm.setValue("role", value as "customer" | "salon")}
+                  onValueChange={(value) => registerForm.setValue("role", value as "customer" | "salon_owner")}
                   defaultValue={registerForm.getValues("role")}
                 >
                   <SelectTrigger id="register-role" data-testid="select-role">
@@ -212,7 +212,7 @@ export default function Auth() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="customer">Customer</SelectItem>
-                    <SelectItem value="salon">Salon Owner</SelectItem>
+                    <SelectItem value="salon_owner">Salon Owner</SelectItem>
                   </SelectContent>
                 </Select>
                 {registerForm.formState.errors.role && (

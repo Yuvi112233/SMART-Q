@@ -1,4 +1,6 @@
 import type { Express } from "express";
+import { z } from 'zod';
+
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { MongoStorage } from "./mongoStorage";
@@ -100,44 +102,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   // Auth routes
-  app.post('/api/auth/register', async (req, res) => {
-    try {
-      const userData = insertUserSchema.parse(req.body);
-      
-      // Check if user already exists
-      const existingUser = await storage.getUserByEmail(userData.email);
-      if (existingUser) {
-        return res.status(400).json({ message: 'User already exists' });
-      }
-
-      // Hash password
-      const hashedPassword = await bcrypt.hash(userData.password, 10);
-      const user = await storage.createUser({
-        ...userData,
-        password: hashedPassword,
-      });
-
-      // Generate JWT
-      const token = jwt.sign(
-        { userId: user.id, email: user.email, role: user.role },
-        JWT_SECRET,
-        { expiresIn: '24h' }
-      );
-
-      res.status(201).json({
-        user: { ...user, password: undefined },
-        token,
-      });
-    } catch (error) {
-      res.status(400).json({ message: 'Invalid user data', error });
+ app.post('/api/auth/register', async (req, res) => {
+  try {
+    // Normalize role: convert 'salon' → 'salon_owner'
+    if (req.body.role === 'salon') {
+      req.body.role = 'salon_owner';
     }
-  });
+
+    // Parse and validate incoming data
+    const userData = insertUserSchema.parse(req.body);
+
+    // Check if user already exists
+    const existingUser = await storage.getUserByEmail(userData.email);
+    if (existingUser) {
+      return res.status(400).json({ message: 'User already exists' });
+    }
+
+    // Create user (storage handles hashing + defaults)
+    const user = await storage.createUser(userData);
+
+    // Generate JWT
+    const token = jwt.sign(
+      { userId: user.id, email: user.email, role: user.role },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    // Respond with safe user data (exclude password)
+    res.status(201).json({
+      user: { ...user, password: undefined },
+      token,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ 
+        message: 'Validation failed', 
+        errors: error.errors 
+      });
+    }
+
+    res.status(500).json({ message: 'Server error', error });
+  }
+});
+
+
 
   app.post('/api/auth/login', async (req, res) => {
     try {
       const { email, password } = loginSchema.parse(req.body);
       
       const user = await storage.getUserByEmail(email);
+      
       if (!user) {
         return res.status(401).json({ message: 'Invalid credentials' });
       }

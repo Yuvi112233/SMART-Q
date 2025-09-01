@@ -8,7 +8,7 @@ export const users = pgTable("users", {
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
-  role: text("role", { enum: ["customer", "salon"] }).notNull().default("customer"),
+  role: text("role", { enum: ["customer", "salon_owner"] }).notNull().default("customer"),
   loyaltyPoints: integer("loyalty_points").notNull().default(0),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
 });

@@ -86,8 +86,11 @@ export class MemStorage implements IStorage {
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(user => user.email === email);
-  }
+  const normalized = email.toLowerCase();
+  return Array.from(this.users.values()).find(
+    user => user.email.toLowerCase() === normalized
+  );
+}
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = randomUUID();

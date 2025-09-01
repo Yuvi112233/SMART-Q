@@ -48,7 +48,7 @@ export default function Dashboard() {
   // Get user's salons
   const { data: salons = [], isLoading: salonsLoading } = useQuery({
     queryKey: ['/api/salons'],
-    enabled: !!user && user.role === 'salon',
+    enabled: !!user && user.role === 'salon_owner',
     select: (data: any[]) => data.filter((salon: any) => salon.ownerId === user?.id),
   });
 
@@ -225,7 +225,7 @@ export default function Dashboard() {
     });
   };
 
-  if (!user || user.role !== 'salon') {
+  if (!user || user.role !== 'salon_owner') {
     return (
       <div className="min-h-screen gradient-pink flex items-center justify-center">
         <Card className="w-full max-w-md mx-4">
