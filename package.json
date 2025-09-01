@@ -101,7 +101,11 @@
     "bufferutil": "^4.0.8"
   },
   "scripts": {
-    "check": "tsc",
-    "db:push": "drizzle-kit push"
+    "dev": "tsx server/index.ts",
+    "build:client": "vite build --config vite.config.ts",
+    "build:server": "esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/server.js",
+    "build": "npm run build:client && npm run build:server",
+    "start": "node dist/server.js",
+    "check": "tsc"
   }
 }
