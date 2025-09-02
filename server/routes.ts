@@ -33,22 +33,27 @@ declare global {
   }
 }
 
-// Middleware for JWT authentication
-const authenticateToken = (req: any, res: any, next: any) => {
-  const authHeader = req.headers.authorization;
-  const token = authHeader && authHeader.split(' ')[1];
+// Updated Middleware for JWT authentication
+const authenticateToken = (req: Express.Request, res: Express.Response, next: Function) => {
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.split(' ')[1];
 
-  if (!token) {
-    return res.status(401).json({ message: 'Access token required' });
+    if (!token) return res.status(401).json({ message: 'Access token required' });
+
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET) as {
+        userId: string;
+        email: string;
+        role: 'customer' | 'salon_owner';
+      };
+
+      if (!decoded.role) return res.status(403).json({ message: 'Role not found in token' });
+
+      req.user = decoded;
+      next();
+  } catch (err) {
+    return res.status(403).json({ message: 'Invalid token', error: err });
   }
-
-  jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
-    if (err) {
-      return res.status(403).json({ message: 'Invalid token' });
-    }
-    req.user = user;
-    next();
-  });
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -56,12 +61,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // WebSocket server for real-time updates
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
-  
   const clients = new Map<string, WebSocket>();
-  
+
   wss.on('connection', (ws: WebSocket, req) => {
     console.log('New WebSocket connection');
-    
+
     ws.on('message', (message: string) => {
       try {
         const data = JSON.parse(message);
@@ -75,7 +79,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
 
     ws.on('close', () => {
-      // Remove client from map when disconnected
       for (const [userId, client] of Array.from(clients.entries())) {
         if (client === ws) {
           clients.delete(userId);
@@ -86,81 +89,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Broadcast queue updates to connected clients
   const broadcastQueueUpdate = (salonId: string, queueData: any) => {
-    const message = JSON.stringify({
-      type: 'queue_update',
-      salonId,
-      data: queueData
-    });
-
-    clients.forEach((ws, userId) => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(message);
-      }
+    const message = JSON.stringify({ type: 'queue_update', salonId, data: queueData });
+    clients.forEach((ws) => {
+      if (ws.readyState === WebSocket.OPEN) ws.send(message);
     });
   };
 
-  // Auth routes
- app.post('/api/auth/register', async (req, res) => {
-  try {
-    // Normalize role: convert 'salon' → 'salon_owner'
-    if (req.body.role === 'salon') {
-      req.body.role = 'salon_owner';
-    }
-
-    // Parse and validate incoming data
-    const userData = insertUserSchema.parse(req.body);
-
-    // Check if user already exists
-    const existingUser = await storage.getUserByEmail(userData.email);
-    if (existingUser) {
-      return res.status(400).json({ message: 'User already exists' });
-    }
-
-    // Create user (storage handles hashing + defaults)
-    const user = await storage.createUser(userData);
-
-    // Generate JWT
-    const token = jwt.sign(
-      { userId: user.id, email: user.email, role: user.role },
-      JWT_SECRET,
-      { expiresIn: '24h' }
-    );
-
-    // Respond with safe user data (exclude password)
-    res.status(201).json({
-      user: { ...user, password: undefined },
-      token,
-    });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({ 
-        message: 'Validation failed', 
-        errors: error.errors 
-      });
-    }
-
-    res.status(500).json({ message: 'Server error', error });
-  }
-});
-
-
-
-  app.post('/api/auth/login', async (req, res) => {
+  // ====================
+  // AUTH ROUTES
+  // ====================
+  app.post('/api/auth/register', async (req, res) => {
     try {
-      const { email, password } = loginSchema.parse(req.body);
-      
-      const user = await storage.getUserByEmail(email);
-      
-      if (!user) {
-        return res.status(401).json({ message: 'Invalid credentials' });
-      }
+      if (req.body.role === 'salon') req.body.role = 'salon_owner';
+      const userData = insertUserSchema.parse(req.body);
 
-      const isValidPassword = await bcrypt.compare(password, user.password);
-      if (!isValidPassword) {
-        return res.status(401).json({ message: 'Invalid credentials' });
-      }
+      const existingUser = await storage.getUserByEmail(userData.email);
+      if (existingUser) return res.status(400).json({ message: 'User already exists' });
+
+      const user = await storage.createUser(userData);
 
       const token = jwt.sign(
         { userId: user.id, email: user.email, role: user.role },
@@ -168,10 +115,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         { expiresIn: '24h' }
       );
 
-      res.json({
-        user: { ...user, password: undefined },
-        token,
-      });
+      res.status(201).json({ user: { ...user, password: undefined }, token });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: 'Validation failed', errors: error.errors });
+      }
+      res.status(500).json({ message: 'Server error', error });
+    }
+  });
+
+  app.post('/api/auth/login', async (req, res) => {
+    try {
+      const { email, password } = loginSchema.parse(req.body);
+      const user = await storage.getUserByEmail(email);
+
+      if (!user) return res.status(401).json({ message: 'Invalid credentials' });
+
+      const isValidPassword = await bcrypt.compare(password, user.password);
+      if (!isValidPassword) return res.status(401).json({ message: 'Invalid credentials' });
+
+      const token = jwt.sign(
+        { userId: user.id, email: user.email, role: user.role },
+        JWT_SECRET,
+        { expiresIn: '24h' }
+      );
+
+      res.json({ user: { ...user, password: undefined }, token });
     } catch (error) {
       res.status(400).json({ message: 'Invalid login data', error });
     }
@@ -180,39 +149,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/auth/profile', authenticateToken, async (req, res) => {
     try {
       const user = await storage.getUser(req.user!.userId);
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
+      if (!user) return res.status(404).json({ message: 'User not found' });
       res.json({ ...user, password: undefined });
     } catch (error) {
       res.status(500).json({ message: 'Server error', error });
     }
   });
 
-  // Salon routes
+  // ====================
+  // SALON ROUTES
+  // ====================
   app.get('/api/salons', async (req, res) => {
     try {
       const { location } = req.query;
-      let salons;
-      
-      if (location) {
-        salons = await storage.getSalonsByLocation(location as string);
-      } else {
-        salons = await storage.getAllSalons();
-      }
+      const salons = location
+        ? await storage.getSalonsByLocation(location as string)
+        : await storage.getAllSalons();
 
-      // Get services and queue counts for each salon
       const salonsWithDetails = await Promise.all(
         salons.map(async (salon) => {
           const services = await storage.getServicesBySalon(salon.id);
           const queues = await storage.getQueuesBySalon(salon.id);
           const waitingQueues = queues.filter(q => q.status === 'waiting');
-          
+
           return {
             ...salon,
             services,
             queueCount: waitingQueues.length,
-            estimatedWaitTime: waitingQueues.length * 15, // rough estimate
+            estimatedWaitTime: waitingQueues.length * 15,
           };
         })
       );
@@ -226,9 +190,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/salons/:id', async (req, res) => {
     try {
       const salon = await storage.getSalon(req.params.id);
-      if (!salon) {
-        return res.status(404).json({ message: 'Salon not found' });
-      }
+      if (!salon) return res.status(404).json({ message: 'Salon not found' });
 
       const services = await storage.getServicesBySalon(salon.id);
       const offers = await storage.getOffersBySalon(salon.id);
@@ -251,21 +213,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/salons', authenticateToken, async (req, res) => {
     try {
-      if (req.user!.role !== 'salon') {
-        return res.status(403).json({ message: 'Only salon owners can create salons' });
-      }
+      if (req.user!.role !== 'salon_owner') return res.status(403).json({ message: 'Only salon owners can create salons' });
 
-      const salonData = insertSalonSchema.parse({
-        ...req.body,
-        ownerId: req.user!.userId,
-      });
-
+      const salonData = insertSalonSchema.parse({ ...req.body, ownerId: req.user!.userId });
       const salon = await storage.createSalon(salonData);
       res.status(201).json(salon);
     } catch (error) {
       res.status(400).json({ message: 'Invalid salon data', error });
     }
   });
+
 
   app.put('/api/salons/:id', authenticateToken, async (req, res) => {
     try {
