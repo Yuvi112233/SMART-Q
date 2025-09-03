@@ -64,6 +64,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
     localStorage.setItem('smartq_token', authToken);
     localStorage.setItem('smartq_user', JSON.stringify(userData));
     console.log('Token stored in localStorage:', localStorage.getItem('smartq_token'));
+    
+    // Verify token has role information
+    try {
+      const tokenData = JSON.parse(atob(authToken.split('.')[1]));
+      if (!tokenData.role && userData.role) {
+        // Re-login to ensure role is in token
+        console.log('Role missing in token, refreshing authentication');
+        localStorage.removeItem('smartq_token');
+        window.location.href = '/auth';
+      }
+    } catch (e) {
+      console.error('Error parsing token:', e);
+    }
   };
 
   const logout = () => {

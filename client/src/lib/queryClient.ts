@@ -34,6 +34,23 @@ export async function apiRequest(
     credentials: "include",
   });
 
+  // Handle token update response
+  if (res.status === 401) {
+    try {
+      const errorData = await res.json();
+      if (errorData.newToken) {
+        // Update token in localStorage
+        localStorage.setItem('smartq_token', errorData.newToken);
+        console.log('Token updated from server response');
+        
+        // Retry the request with new token
+        return apiRequest(method, url, data);
+      }
+    } catch (e) {
+      // If parsing fails, continue with normal error handling
+    }
+  }
+
   await throwIfResNotOk(res);
   return res;
 }

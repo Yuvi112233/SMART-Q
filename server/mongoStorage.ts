@@ -29,6 +29,11 @@ export class MongoStorage implements IStorage {
     return user ? user as unknown as User : undefined;
   }
 
+  async getUserByPhone(phone: string): Promise<User | undefined> {
+    const user = await UserModel.findOne({ phone }).lean();
+    return user ? user as unknown as User : undefined;
+  }
+
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = randomUUID();
     // Hash password
@@ -38,7 +43,6 @@ export class MongoStorage implements IStorage {
       ...insertUser,
       id,
       password: hashedPassword,
-      role: insertUser.role || "customer",
       loyaltyPoints: 0,
       createdAt: new Date(),
     };
@@ -225,7 +229,8 @@ export class MongoStorage implements IStorage {
 
   async getActiveOffers(): Promise<Offer[]> {
     const offers = await OfferModel.find({ 
-      validUntil: { $gt: new Date() } 
+      validityPeriod: { $gt: new Date() },
+      isActive: true
     }).lean();
     return offers as unknown as Offer[];
   }

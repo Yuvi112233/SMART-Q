@@ -7,8 +7,9 @@ export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
+  phone: text("phone").unique(),
   password: text("password").notNull(),
-  role: text("role", { enum: ["customer", "salon_owner"] }).notNull().default("customer"),
+  role: text("role").notNull().default("customer"),
   loyaltyPoints: integer("loyalty_points").notNull().default(0),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
 });
@@ -79,6 +80,11 @@ export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
   loyaltyPoints: true,
   createdAt: true,
+}).extend({
+  phone: z.string()
+    .min(10, "Phone number must be at least 10 digits")
+    .regex(/^\+[1-9]\d{1,14}$/, "Phone number must include country code (e.g., +1234567890)"),
+  role: z.enum(["customer", "salon_owner"]).default("customer"),
 });
 
 export const insertSalonSchema = createInsertSchema(salons).omit({
@@ -110,8 +116,14 @@ export const insertReviewSchema = createInsertSchema(reviews).omit({
 
 // Login schema
 export const loginSchema = z.object({
-  email: z.string().email(),
+  email: z.string().email().optional(),
+  phone: z.string()
+    .regex(/^\+[1-9]\d{1,14}$/, "Phone number must include country code (e.g., +1234567890)")
+    .optional(),
   password: z.string().min(6),
+}).refine(data => data.email || data.phone, {
+  message: "Either email or phone is required",
+  path: ["email"]
 });
 
 // Types

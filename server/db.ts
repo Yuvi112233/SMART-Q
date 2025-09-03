@@ -21,12 +21,13 @@ export const connectDB = async (): Promise<void> => {
 // Define schemas
 const userSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
   name: { type: String, required: true },
-  role: { type: String, enum: ['customer', 'salon_owner', 'admin'], default: 'customer' },
+  email: { type: String, required: true, unique: true },
+  phone: { type: String, unique: true, sparse: true },
+  password: { type: String, required: true },
+  role: { type: String, required: true, default: 'customer', enum: ['customer', 'salon_owner'] },
   loyaltyPoints: { type: Number, default: 0 },
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
 });
 
 const salonSchema = new mongoose.Schema({
@@ -67,9 +68,10 @@ const offerSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   salonId: { type: String, required: true },
   title: { type: String, required: true },
-  description: { type: String },
+  description: { type: String, required: true },
   discount: { type: Number, required: true },
-  validUntil: { type: Date, required: true },
+  validityPeriod: { type: Date, required: true },
+  isActive: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now }
 });
 

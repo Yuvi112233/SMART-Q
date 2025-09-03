@@ -96,7 +96,7 @@ export default function Dashboard() {
     defaultValues: {
       title: "",
       description: "",
-      discount: "10",
+      discount: 10,
       validityPeriod: new Date(),
       isActive: true,
     },
@@ -197,11 +197,19 @@ export default function Dashboard() {
   const onOfferSubmit = (data: OfferForm) => {
     if (!selectedSalonId) return;
     console.log('Offer form data:', data);
-    createOfferMutation.mutate({
-      ...data,
+    
+    // Ensure all required fields are present and properly formatted
+    const offerData = {
+      title: data.title || "",
+      description: data.description || "",
+      discount: typeof data.discount === 'number' ? data.discount.toFixed(2) : data.discount,
+      validityPeriod: data.validityPeriod,
+      isActive: data.isActive !== undefined ? data.isActive : true,
       salonId: selectedSalonId,
-      validityPeriod: data.validityPeriod instanceof Date ? data.validityPeriod.toISOString() : data.validityPeriod,
-    });
+    };
+    
+    console.log('Sending offer data:', offerData);
+    createOfferMutation.mutate(offerData);
   };
 
   const startService = (queueId: string) => {
@@ -494,6 +502,36 @@ export default function Dashboard() {
                                     {queue.status === 'waiting' ? 'Waiting' : 'In Progress'}
                                   </Badge>
                                   <div className="flex space-x-2">
+                                    {queue.user && queue.user.phone && (
+                                      <>
+                                        <a 
+                                          href={`tel:${queue.user.phone}`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                        >
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            data-testid={`button-call-${queue.id}`}
+                                          >
+                                            <span role="img" aria-label="phone">📞</span> Call
+                                          </Button>
+                                        </a>
+                                        <a 
+                                          href={`https://wa.me/${queue.user.phone.replace(/\D/g, '')}?text=Hello%20Your%20turn%20has%20come%20at%20SmartQ%20Salon`}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                        >
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            data-testid={`button-whatsapp-${queue.id}`}
+                                          >
+                                            <span role="img" aria-label="whatsapp">💬</span> WhatsApp
+                                          </Button>
+                                        </a>
+                                      </>
+                                    )}
                                     {queue.status === 'waiting' ? (
                                       <Button
                                         size="sm"
@@ -749,7 +787,7 @@ export default function Dashboard() {
                                             <Input 
                                               type="date" 
                                               {...field}
-                                              value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                                              value={field.value && !isNaN(new Date(field.value).getTime()) ? new Date(field.value).toISOString().split('T')[0] : ''}
                                               onChange={(e) => field.onChange(new Date(e.target.value))}
                                               data-testid="input-offer-validity"
                                             />

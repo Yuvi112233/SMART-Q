@@ -35,22 +35,25 @@ declare global {
 
 // Updated Middleware for JWT authentication
 const authenticateToken = (req: Express.Request, res: Express.Response, next: Function) => {
-    const authHeader = req.headers.authorization;
-    const token = authHeader?.split(' ')[1];
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.split(' ')[1];
 
-    if (!token) return res.status(401).json({ message: 'Access token required' });
+  if (!token) return res.status(401).json({ message: 'Access token required' });
 
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET) as {
-        userId: string;
-        email: string;
-        role: 'customer' | 'salon_owner';
-      };
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as {
+      userId: string;
+      email: string;
+      role?: 'customer' | 'salon_owner';
+    };
 
-      if (!decoded.role) return res.status(403).json({ message: 'Role not found in token' });
+    // Set default role if missing
+    if (!decoded.role) {
+      decoded.role = 'customer';
+    }
 
-      req.user = decoded;
-      next();
+    req.user = decoded;
+    next();
   } catch (err) {
     return res.status(403).json({ message: 'Invalid token', error: err });
   }
@@ -101,13 +104,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ====================
   app.post('/api/auth/register', async (req, res) => {
     try {
-      if (req.body.role === 'salon') req.body.role = 'salon_owner';
+      // Ensure role is properly set to salon_owner if salon is selected
+      if (req.body.role === 'salon') {
+        req.body.role = 'salon_owner';
+      }
+      
+      console.log('Registration data:', req.body); // Log registration data
       const userData = insertUserSchema.parse(req.body);
-
-      const existingUser = await storage.getUserByEmail(userData.email);
-      if (existingUser) return res.status(400).json({ message: 'User already exists' });
+      console.log('Parsed user data:', userData); // Log parsed data
 
       const user = await storage.createUser(userData);
+      console.log('Created user:', user); // Log created user
 
       const token = jwt.sign(
         { userId: user.id, email: user.email, role: user.role },
@@ -117,6 +124,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.status(201).json({ user: { ...user, password: undefined }, token });
     } catch (error) {
+      console.error('Registration error:', error); // Log error
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: 'Validation failed', errors: error.errors });
       }
@@ -126,8 +134,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/auth/login', async (req, res) => {
     try {
-      const { email, password } = loginSchema.parse(req.body);
-      const user = await storage.getUserByEmail(email);
+      const { email, phone, password } = loginSchema.parse(req.body);
+      let user;
+      
+      if (email) {
+        user = await storage.getUserByEmail(email);
+      } else if (phone) {
+        user = await storage.getUserByPhone(phone);
+      }
 
       if (!user) return res.status(401).json({ message: 'Invalid credentials' });
 
@@ -216,6 +230,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.user!.role !== 'salon_owner') return res.status(403).json({ message: 'Only salon owners can create salons' });
 
       const salonData = insertSalonSchema.parse({ ...req.body, ownerId: req.user!.userId });
+      if (req.user!.role !== 'salon_owner') {
+        return res.status(403).json({ message: 'Only salon owners can create salons' });
+      }
       const salon = await storage.createSalon(salonData);
       res.status(201).json(salon);
     } catch (error) {
@@ -340,9 +357,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: req.user!.userId,
       });
 
-      // Check if user is already in queue for this salon
+      // Check if user is already in active queue for this salon
       const existingQueue = await storage.getUserQueuePosition(req.user!.userId, queueData.salonId);
-      if (existingQueue) {
+      if (existingQueue && (existingQueue.status === 'waiting' || existingQueue.status === 'in-progress')) {
         return res.status(400).json({ message: 'Already in queue for this salon' });
       }
 
@@ -431,6 +448,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(offer);
     } catch (error) {
       res.status(400).json({ message: 'Invalid offer data', error });
+    }
+  });
+
+  app.put('/api/offers/:id', authenticateToken, async (req, res) => {
+    try {
+      const offer = await storage.getOffer(req.params.id);
+      if (!offer) {
+        return res.status(404).json({ message: 'Offer not found' });
+      }
+
+      // Verify salon ownership
+      const salon = await storage.getSalon(offer.salonId);
+      if (!salon || salon.ownerId !== req.user!.userId) {
+        return res.status(403).json({ message: 'Not authorized to update offers for this salon' });
+      }
+
+      const updates = insertOfferSchema.partial().parse(req.body);
+      const updatedOffer = await storage.updateOffer(req.params.id, updates);
+      res.json(updatedOffer);
+    } catch (error) {
+      res.status(400).json({ message: 'Invalid offer data', error });
+    }
+  });
+
+  app.delete('/api/offers/:id', authenticateToken, async (req, res) => {
+    try {
+      const offer = await storage.getOffer(req.params.id);
+      if (!offer) {
+        return res.status(404).json({ message: 'Offer not found' });
+      }
+
+      // Verify salon ownership
+      const salon = await storage.getSalon(offer.salonId);
+      if (!salon || salon.ownerId !== req.user!.userId) {
+        return res.status(403).json({ message: 'Not authorized to delete offers for this salon' });
+      }
+
+      await storage.deleteOffer(req.params.id);
+      res.json({ message: 'Offer deleted successfully' });
+    } catch (error) {
+      res.status(500).json({ message: 'Server error', error });
     }
   });
 

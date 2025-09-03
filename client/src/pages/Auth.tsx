@@ -33,6 +33,7 @@ export default function Auth() {
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: "",
+      phone: "",
       password: "",
     },
     mode: "onChange",
@@ -43,9 +44,10 @@ export default function Auth() {
     defaultValues: {
       name: "",
       email: "",
+      phone: "",
       password: "",
       confirmPassword: "",
-      role: "customer",
+      role: "customer", // Default role
     },
     mode: "onChange",
   });
@@ -79,7 +81,14 @@ export default function Auth() {
   });
 
   const registerMutation = useMutation({
-    mutationFn: api.auth.register,
+    mutationFn: (userData) => {
+      // Ensure role is explicitly set to "salon_owner" for salon owners
+      if (userData.role === "salon") {
+        userData.role = "salon_owner";
+      }
+      console.log("Sending registration with role:", userData.role);
+      return api.auth.register(userData);
+    },
     onSuccess: (data) => {
       login(data.user, data.token);
       toast({
@@ -102,10 +111,18 @@ export default function Auth() {
     loginMutation.mutate(data);
   };
 
-  const onRegisterSubmit = (data: RegisterForm) => {
+  const onRegisterSubmit = (data: z.infer<typeof registerSchema>) => {
     console.log('Register form submitted with:', data);
     const { confirmPassword, ...userData } = data;
-    console.log('Sending to API:', userData);
+    
+    // Force set the role to "salon" if salon owner is selected
+    if (userData.role === "salon") {
+      console.log('Setting role to salon for salon owner');
+    } else {
+      console.log('Keeping role as customer');
+    }
+    
+    console.log('Sending to API with role:', userData.role);
     registerMutation.mutate(userData);
   };
 
@@ -138,6 +155,22 @@ export default function Auth() {
                 />
                 {loginForm.formState.errors.email && (
                   <p className="text-sm text-destructive">{loginForm.formState.errors.email.message}</p>
+                )}
+              </div>
+              
+              <div className="space-y-2">
+                <label htmlFor="login-phone" className="text-sm font-medium text-foreground">
+                  Phone Number (alternative to email)
+                </label>
+                <Input 
+                  id="login-phone"
+                  type="tel" 
+                  placeholder="Or enter your phone number" 
+                  {...loginForm.register("phone")}
+                  data-testid="input-phone"
+                />
+                {loginForm.formState.errors.phone && (
+                  <p className="text-sm text-destructive">{loginForm.formState.errors.phone.message}</p>
                 )}
               </div>
               
@@ -200,19 +233,36 @@ export default function Auth() {
               </div>
               
               <div className="space-y-2">
+                <label htmlFor="register-phone" className="text-sm font-medium text-foreground">
+                  Phone Number
+                </label>
+                <Input 
+                  id="register-phone"
+                  type="tel" 
+                  placeholder="Enter your phone number (10-15 digits)" 
+                  {...registerForm.register("phone")}
+                  data-testid="input-phone"
+                />
+                {registerForm.formState.errors.phone && (
+                  <p className="text-sm text-destructive">{registerForm.formState.errors.phone.message}</p>
+                )}
+              </div>
+              
+              <div className="space-y-2">
                 <label htmlFor="register-role" className="text-sm font-medium text-foreground">
                   Account Type
                 </label>
                 <Select 
-                  onValueChange={(value) => registerForm.setValue("role", value as "customer" | "salon_owner")}
-                  defaultValue={registerForm.getValues("role")}
+                  defaultValue="customer" 
+                  onValueChange={(value) => registerForm.setValue("role", value === "salon" ? "salon_owner" : value)}
+                  data-testid="select-role"
                 >
-                  <SelectTrigger id="register-role" data-testid="select-role">
+                  <SelectTrigger id="register-role">
                     <SelectValue placeholder="Select account type" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="customer">Customer</SelectItem>
-                    <SelectItem value="salon_owner">Salon Owner</SelectItem>
+                    <SelectItem value="salon">Salon Owner</SelectItem>
                   </SelectContent>
                 </Select>
                 {registerForm.formState.errors.role && (
