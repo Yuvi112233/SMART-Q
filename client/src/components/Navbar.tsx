@@ -39,7 +39,7 @@ export default function Navbar() {
                   >
                     My Queue
                   </Link>
-                  {user.role === 'salon' && (
+                  {user.role === 'salon_owner' && (
                     <Link 
                       href="/dashboard" 
                       className={`transition-colors duration-200 ${
