@@ -297,15 +297,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const queues = await storage.getQueuesByUser(req.user!.userId);
       
-      // Get additional details for each queue
       const queuesWithDetails = await Promise.all(
         queues.map(async (queue) => {
           const salon = await storage.getSalon(queue.salonId);
           const service = await storage.getService(queue.serviceId);
+          const salonQueues = await storage.getQueuesBySalon(queue.salonId);
+          // Waiting list should be sorted by position ascending, which getQueuesBySalon does.
+          const waitingQueues = salonQueues.filter(q => q.status === 'waiting');
+          
+          let userPosition = queue.position;
+          if (queue.status === 'waiting') {
+            const userInWaitingList = waitingQueues.findIndex(q => q.id === queue.id);
+            if (userInWaitingList !== -1) {
+              userPosition = userInWaitingList + 1;
+            }
+          } else if (queue.status === 'in-progress') {
+            userPosition = 0; // Indicates "in progress"
+          }
+          
           return {
             ...queue,
+            position: userPosition,
             salon,
             service,
+            totalInQueue: waitingQueues.length,
           };
         })
       );

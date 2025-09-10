@@ -18,6 +18,7 @@ export interface QueueWithDetails extends Queue {
   salon: Salon | null;
   service: Service | null;
   user?: User | null;
+  totalInQueue?: number;
 }
 
 export interface AuthResponse {
