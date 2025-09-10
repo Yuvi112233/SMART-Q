@@ -84,7 +84,7 @@ const clientDistPath = path.resolve(__dirname, "../client/dist");
   }
 
   // Listen on Render’s port
-  const port = parseInt(process.env.PORT || "5000", 10);
+  const port = parseInt(process.env.PORT || "5001", 10);
   server.listen(
     {
       port,

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
@@ -30,6 +30,8 @@ export default function SalonProfile() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [showReviewForm, setShowReviewForm] = useState(false);
+  const [selectedOffer, setSelectedOffer] = useState<SalonDetails['offers'][0] | null>(null);
+  const [selectedService, setSelectedService] = useState<SalonDetails['services'][0] | null>(null);
 
   const { data: salon, isLoading } = useQuery<SalonDetails>({
     queryKey: ['/api/salons', id],
@@ -90,6 +92,21 @@ export default function SalonProfile() {
       });
     },
   });
+
+  const totalPrice = useMemo(() => {
+    if (!selectedService) return 0;
+    if (!selectedOffer) return selectedService.price.toFixed(2);
+    const discount = (selectedService.price * selectedOffer.discount) / 100;
+    return (selectedService.price - discount).toFixed(2);
+  }, [selectedService, selectedOffer]);
+
+  const handleApplyOffer = (offer: SalonDetails['offers'][0]) => {
+    if (selectedOffer?.id === offer.id) {
+      setSelectedOffer(null);
+    } else {
+      setSelectedOffer(offer);
+    }
+  };
 
   const onQueueSubmit = (data: QueueForm) => {
     if (!user) {
@@ -252,7 +269,14 @@ export default function SalonProfile() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Service</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select 
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            const service = salon.services.find(s => s.id === value);
+                            setSelectedService(service || null);
+                          }} 
+                          value={field.value}
+                        >
                           <FormControl>
                             <SelectTrigger data-testid="select-service">
                               <SelectValue placeholder="Select a service" />
@@ -270,10 +294,37 @@ export default function SalonProfile() {
                       </FormItem>
                     )}
                   />
+
+                  {selectedService && (
+                    <div className="mt-4 p-4 bg-secondary rounded-lg">
+                      <h4 className="font-semibold text-foreground mb-2">Total Charges</h4>
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Base Price:</span>
+                        <span className="font-semibold">${selectedService.price}</span>
+                      </div>
+                      {selectedOffer && (
+                        <div className="flex justify-between items-center mt-2">
+                          <span className="text-muted-foreground">
+                            Discount ({selectedOffer.title} - {selectedOffer.discount}%):
+                          </span>
+                          <span className="font-semibold text-green-500">
+                            -${(selectedService.price * selectedOffer.discount / 100).toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center mt-2 font-bold text-lg">
+                        <span>Total:</span>
+                        <span>
+                          ${totalPrice}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
                   <Button 
                     type="submit" 
                     className="w-full" 
-                    disabled={joinQueueMutation.isPending}
+                    disabled={joinQueueMutation.isPending || !selectedService}
                     data-testid="button-join-queue"
                   >
                     {joinQueueMutation.isPending ? "Joining..." : "Join Queue"}
@@ -310,6 +361,15 @@ export default function SalonProfile() {
                                 </span>
                               </div>
                             </div>
+                            <Button 
+                              size="sm"
+                              variant={selectedOffer?.id === offer.id ? "secondary" : "default"}
+                              onClick={() => handleApplyOffer(offer)}
+                              disabled={!selectedService}
+                              data-testid={`button-apply-offer-${offer.id}`}
+                            >
+                              {selectedOffer?.id === offer.id ? "Applied" : "Apply"}
+                            </Button>
                           </div>
                         </div>
                     ))}
