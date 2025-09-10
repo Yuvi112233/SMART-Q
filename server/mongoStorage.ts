@@ -29,17 +29,12 @@ export class MongoStorage implements IStorage {
     return user ? user as unknown as User : undefined;
   }
 
-  async getUserByPhone(phone: string): Promise<User | undefined> {
-    const user = await UserModel.findOne({ phone }).lean();
-    return user ? user as unknown as User : undefined;
-  }
-
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = randomUUID();
     // Hash password
     const hashedPassword = await bcrypt.hash(insertUser.password, 10);
     
-    const user: User = {
+    const user: Omit<User, 'phone'> & { phone?: string } = {
       ...insertUser,
       id,
       password: hashedPassword,
@@ -47,8 +42,10 @@ export class MongoStorage implements IStorage {
       createdAt: new Date(),
     };
     
+    delete user.phone; // Ensure phone is not saved
+
     await UserModel.create(user);
-    return user;
+    return user as User;
   }
 
   async updateUser(id: string, updates: Partial<User>): Promise<User | undefined> {

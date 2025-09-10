@@ -33,7 +33,6 @@ export default function Auth() {
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: "",
-      phone: "",
       password: "",
     },
     mode: "onChange",
@@ -155,22 +154,6 @@ export default function Auth() {
                 />
                 {loginForm.formState.errors.email && (
                   <p className="text-sm text-destructive">{loginForm.formState.errors.email.message}</p>
-                )}
-              </div>
-              
-              <div className="space-y-2">
-                <label htmlFor="login-phone" className="text-sm font-medium text-foreground">
-                  Phone Number (alternative to email)
-                </label>
-                <Input 
-                  id="login-phone"
-                  type="tel" 
-                  placeholder="Or enter your phone number" 
-                  {...loginForm.register("phone")}
-                  data-testid="input-phone"
-                />
-                {loginForm.formState.errors.phone && (
-                  <p className="text-sm text-destructive">{loginForm.formState.errors.phone.message}</p>
                 )}
               </div>
               

@@ -134,13 +134,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/auth/login', async (req, res) => {
     try {
-      const { email, phone, password } = loginSchema.parse(req.body);
+      const { email, password } = loginSchema.parse(req.body);
       let user;
       
       if (email) {
         user = await storage.getUserByEmail(email);
-      } else if (phone) {
-        user = await storage.getUserByPhone(phone);
       }
 
       if (!user) return res.status(401).json({ message: 'Invalid credentials' });

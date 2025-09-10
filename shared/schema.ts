@@ -132,14 +132,8 @@ export const insertReviewSchema = createInsertSchema(reviews).omit({
 
 // ---------------- LOGIN ----------------
 export const loginSchema = z.object({
-  email: z.string().email().optional(),
-  phone: z.string()
-    .regex(/^\+[1-9]\d{1,14}$/, "Phone number must include country code (e.g., +1234567890)")
-    .optional(),
+  email: z.string().email(),
   password: z.string().min(6),
-}).refine(data => data.email || data.phone, {
-  message: "Either email or phone is required",
-  path: ["email"]
 });
 
 // ---------------- TYPES ----------------
