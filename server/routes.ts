@@ -350,6 +350,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/salons/:salonId/offers', authenticateToken, async (req, res) => {
+    try {
+      const salon = await storage.getSalon(req.params.salonId);
+      if (!salon) {
+        return res.status(404).json({ message: 'Salon not found' });
+      }
+
+      // Verify salon ownership
+      if (salon.ownerId !== req.user!.userId) {
+        return res.status(403).json({ message: 'Not authorized to view offers for this salon' });
+      }
+
+      const offers = await storage.getOffersBySalon(req.params.salonId);
+      console.log(`Fetching offers for salon ${req.params.salonId}:`, offers);
+      console.log(`Number of offers found: ${offers.length}`);
+      console.log(`Offers data:`, JSON.stringify(offers, null, 2));
+      res.json(offers);
+    } catch (error) {
+      console.error('Error fetching offers:', error);
+      res.status(500).json({ message: 'Server error', error });
+    }
+  });
+
   app.post('/api/queues', authenticateToken, async (req, res) => {
     try {
       const queueData = insertQueueSchema.parse({
@@ -436,7 +459,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/offers', authenticateToken, async (req, res) => {
     try {
+      console.log('Raw request body:', req.body);
+      console.log('validityPeriod type:', typeof req.body.validityPeriod);
+      console.log('validityPeriod value:', req.body.validityPeriod);
+      
       const offerData = insertOfferSchema.parse(req.body);
+      console.log('Parsed offer data:', offerData);
       
       // Verify salon ownership
       const salon = await storage.getSalon(offerData.salonId);
@@ -447,6 +475,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const offer = await storage.createOffer(offerData);
       res.status(201).json(offer);
     } catch (error) {
+      console.error('Offer creation error:', error);
       res.status(400).json({ message: 'Invalid offer data', error });
     }
   });

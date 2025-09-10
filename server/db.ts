@@ -69,11 +69,12 @@ const offerSchema = new mongoose.Schema({
   salonId: { type: String, required: true },
   title: { type: String, required: true },
   description: { type: String, required: true },
-  discount: { type: Number, required: true },
-  validityPeriod: { type: Date, required: true },
+  discount: { type: Number, required: true }, // stays a number
+  validityPeriod: { type: Date, required: true }, // proper date
   isActive: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now }
 });
+
 
 const reviewSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },

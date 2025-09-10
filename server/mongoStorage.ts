@@ -223,11 +223,14 @@ export class MongoStorage implements IStorage {
   }
 
   async getOffersBySalon(salonId: string): Promise<Offer[]> {
+    console.log('MongoDB: Searching for offers with salonId:', salonId);
     const offers = await OfferModel.find({ salonId }).lean();
+    console.log('MongoDB: Found offers:', offers);
     return offers as unknown as Offer[];
   }
 
   async getActiveOffers(): Promise<Offer[]> {
+    console.log('MongoDB: Searching for active offers');
     const offers = await OfferModel.find({ 
       validityPeriod: { $gt: new Date() },
       isActive: true
@@ -243,7 +246,9 @@ export class MongoStorage implements IStorage {
       createdAt: new Date(),
     };
     
+    console.log('MongoDB: Creating offer:', newOffer);
     await OfferModel.create(newOffer);
+    console.log('MongoDB: Offer created successfully');
     return newOffer;
   }
 

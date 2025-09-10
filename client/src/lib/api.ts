@@ -97,6 +97,16 @@ export const api = {
       const response = await apiRequest('POST', '/api/offers', offerData);
       return response.json();
     },
+    
+    update: async (id: string, updates: Partial<InsertOffer>) => {
+      const response = await apiRequest('PUT', `/api/offers/${id}`, updates);
+      return response.json();
+    },
+    
+    delete: async (id: string) => {
+      const response = await apiRequest('DELETE', `/api/offers/${id}`);
+      return response.json();
+    },
   },
 
   reviews: {

@@ -282,29 +282,44 @@ export default function SalonProfile() {
               </Form>
 
               {/* Current Offers */}
-              {salon.offers.length > 0 && (
-                <div className="mt-6">
-                  <h4 className="font-semibold text-foreground mb-3 flex items-center space-x-2">
-                    <Tag className="h-4 w-4" />
-                    <span>Current Offers</span>
-                  </h4>
-                  <div className="space-y-2">
-                    {salon.offers.map((offer) => (
-                      <div key={offer.id} className="p-3 bg-primary/10 rounded-lg" data-testid={`offer-${offer.id}`}>
-                        <h5 className="font-medium text-foreground" data-testid={`text-offer-title-${offer.id}`}>
-                          {offer.title}
-                        </h5>
-                        <p className="text-sm text-muted-foreground" data-testid={`text-offer-description-${offer.id}`}>
-                          {offer.description}
-                        </p>
-                        <Badge variant="secondary" className="mt-1" data-testid={`badge-offer-discount-${offer.id}`}>
-                          {offer.discount}% off
-                        </Badge>
-                      </div>
+              <div className="mt-6">
+                <h4 className="font-semibold text-foreground mb-3 flex items-center space-x-2">
+                  <Tag className="h-4 w-4" />
+                  <span>Current Offers</span>
+                </h4>
+                {salon.offers.length > 0 ? (
+                  <div className="space-y-3">
+                    {salon.offers
+                      .filter(offer => offer.isActive)
+                      .map((offer) => (
+                        <div key={offer.id} className="bg-card border rounded-lg p-4 shadow-sm" data-testid={`offer-${offer.id}`}>
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h5 className="font-semibold text-foreground" data-testid={`text-offer-title-${offer.id}`}>
+                                {offer.title}
+                              </h5>
+                              <p className="text-sm text-muted-foreground mt-1" data-testid={`text-offer-description-${offer.id}`}>
+                                {offer.description}
+                              </p>
+                              <div className="flex items-center mt-2 space-x-4">
+                                <Badge variant="success" className="text-white" data-testid={`badge-offer-discount-${offer.id}`}>
+                                  {offer.discount}% OFF
+                                </Badge>
+                                <span className="text-xs text-muted-foreground">
+                                  Valid until {new Date(offer.validityPeriod).toLocaleDateString()}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                     ))}
                   </div>
-                </div>
-              )}
+                ) : (
+                  <div className="p-4 bg-secondary rounded-lg text-center">
+                    <p className="text-muted-foreground">No active offers available</p>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>

@@ -69,6 +69,37 @@ export default function Dashboard() {
     enabled: !!selectedSalonId,
   });
 
+  // Get offers for selected salon
+  const { data: offers = [], isLoading: offersLoading, error: offersError } = useQuery({
+    queryKey: ['salon-offers', selectedSalonId],
+    enabled: !!selectedSalonId,
+    queryFn: async () => {
+      console.log('Fetching offers for salon:', selectedSalonId);
+      const token = localStorage.getItem('smartq_token');
+      console.log('Using token:', token ? 'Token exists' : 'No token');
+      
+      const response = await fetch(`/api/salons/${selectedSalonId}/offers`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      console.log('Response status:', response.status);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Failed to fetch offers:', errorText);
+        throw new Error(`Failed to fetch offers: ${response.status} ${errorText}`);
+      }
+      const data = await response.json();
+      console.log('Received offers data:', data);
+      return data;
+    },
+  });
+
+  // Debug offers
+  console.log('Offers state:', { offers, offersLoading, offersError, selectedSalonId });
+
   // Forms
   const salonForm = useForm<SalonForm>({
     resolver: zodResolver(salonFormSchema),
@@ -97,7 +128,7 @@ export default function Dashboard() {
       title: "",
       description: "",
       discount: 10,
-      validityPeriod: new Date(),
+      validityPeriod: new Date(new Date().setMonth(new Date().getMonth() + 1)),
       isActive: true,
     },
   });
@@ -148,8 +179,11 @@ export default function Dashboard() {
         title: "Offer created successfully!",
         description: "Your promotion is now active.",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/salons'] });
       offerForm.reset();
+      // Invalidate offers query to refresh the list
+      queryClient.invalidateQueries({ 
+        queryKey: ['salon-offers', selectedSalonId] 
+      });
     },
     onError: (error) => {
       toast({
@@ -179,6 +213,47 @@ export default function Dashboard() {
     },
   });
 
+  const updateOfferMutation = useMutation({
+    mutationFn: ({ id, updates }: { id: string; updates: Partial<OfferForm> }) => 
+      api.offers.update(id, updates),
+    onSuccess: () => {
+      toast({
+        title: "Offer updated successfully!",
+        description: "Your promotion has been updated.",
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: ['salon-offers', selectedSalonId] 
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to update offer",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteOfferMutation = useMutation({
+    mutationFn: (id: string) => api.offers.delete(id),
+    onSuccess: () => {
+      toast({
+        title: "Offer deleted successfully!",
+        description: "The promotion has been removed.",
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: ['salon-offers', selectedSalonId] 
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to delete offer",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const onSalonSubmit = (data: SalonForm) => {
     createSalonMutation.mutate({
       ...data,
@@ -200,11 +275,11 @@ export default function Dashboard() {
     
     // Ensure all required fields are present and properly formatted
     const offerData = {
-      title: data.title || "",
-      description: data.description || "",
-      discount: typeof data.discount === 'number' ? data.discount.toFixed(2) : data.discount,
-      validityPeriod: data.validityPeriod,
-      isActive: data.isActive !== undefined ? data.isActive : true,
+      title: data.title.trim(),
+      description: data.description.trim(),
+      discount: typeof data.discount === 'number' ? data.discount : parseFloat(data.discount.toString()),
+      validityPeriod: data.validityPeriod instanceof Date ? data.validityPeriod : new Date(data.validityPeriod),
+      isActive: Boolean(data.isActive),
       salonId: selectedSalonId,
     };
     
@@ -771,7 +846,16 @@ export default function Dashboard() {
                                         <FormItem>
                                           <FormLabel>Discount (%)</FormLabel>
                                           <FormControl>
-                                            <Input placeholder="10" {...field} data-testid="input-offer-discount" />
+                                            <Input 
+                                              type="number" 
+                                              min="1" 
+                                              max="99" 
+                                              step="0.01" 
+                                              placeholder="10.00" 
+                                              {...field} 
+                                              onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                                              data-testid="input-offer-discount" 
+                                            />
                                           </FormControl>
                                           <FormMessage />
                                         </FormItem>
@@ -787,7 +871,8 @@ export default function Dashboard() {
                                             <Input 
                                               type="date" 
                                               {...field}
-                                              value={field.value && !isNaN(new Date(field.value).getTime()) ? new Date(field.value).toISOString().split('T')[0] : ''}
+                                              min={new Date().toISOString().split('T')[0]}
+                                              value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : ''}
                                               onChange={(e) => field.onChange(new Date(e.target.value))}
                                               data-testid="input-offer-validity"
                                             />
@@ -812,10 +897,67 @@ export default function Dashboard() {
                         </div>
                       </CardHeader>
                       <CardContent>
-                        <div className="text-center py-8">
-                          <Percent className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                          <p className="text-muted-foreground">No active offers</p>
-                        </div>
+                        {offersLoading ? (
+                          <div className="space-y-4">
+                            {[...Array(2)].map((_, i) => (
+                              <div key={i} className="h-24 bg-muted rounded animate-pulse"></div>
+                            ))}
+                          </div>
+                        ) : offers.length > 0 ? (
+                          <div className="space-y-4">
+                            {offers.map((offer: any) => (
+                              <div key={offer.id} className="bg-card border rounded-lg p-4 shadow-sm">
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <h3 className="font-semibold text-lg">{offer.title}</h3>
+                                    <p className="text-muted-foreground text-sm mt-1">{offer.description}</p>
+                                    <div className="flex items-center mt-2 space-x-4">
+                                      <Badge variant="secondary" className="bg-primary/10 text-primary">
+                                        {offer.discount}% OFF
+                                      </Badge>
+                                      <span className="text-xs text-muted-foreground">
+                                        Valid until {new Date(offer.validityPeriod).toLocaleDateString()}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <Badge variant={offer.isActive ? "success" : "secondary"}>
+                                      {offer.isActive ? "Active" : "Inactive"}
+                                    </Badge>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => updateOfferMutation.mutate({
+                                        id: offer.id,
+                                        updates: { isActive: !offer.isActive }
+                                      })}
+                                      disabled={updateOfferMutation.isPending}
+                                    >
+                                      {offer.isActive ? "Deactivate" : "Activate"}
+                                    </Button>
+                                    <Button
+                                      variant="destructive"
+                                      size="sm"
+                                      onClick={() => {
+                                        if (confirm("Are you sure you want to delete this offer?")) {
+                                          deleteOfferMutation.mutate(offer.id);
+                                        }
+                                      }}
+                                      disabled={deleteOfferMutation.isPending}
+                                    >
+                                      Delete
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8">
+                            <Percent className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                            <p className="text-muted-foreground">No active offers</p>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   </TabsContent>
