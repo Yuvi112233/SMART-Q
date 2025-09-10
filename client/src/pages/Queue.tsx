@@ -124,35 +124,45 @@ export default function Queue() {
                               <span data-testid={`text-salon-location-${queue.id}`}>{queue.salon?.location}</span>
                             </p>
                             
-                            {/* Position Circle */}
-                            <div className="relative mb-6">
-                              <svg className="w-32 h-32 mx-auto transform -rotate-90">
-                                <circle 
-                                  cx="64" cy="64" r="56" 
-                                  stroke="currentColor" 
-                                  strokeWidth="8" 
-                                  fill="none" 
-                                  className="text-muted/20"
-                                />
-                                <circle 
-                                  cx="64" cy="64" r="56" 
-                                  stroke="currentColor" 
-                                  strokeWidth="8" 
-                                  fill="none" 
-                                  strokeDasharray="352" 
-                                  strokeDashoffset={352 - (352 * (queue.position > 0 ? Math.max(0, 1 - queue.position / 10) : 0))}
-                                  className="text-primary"
-                                />
-                              </svg>
-                              <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="text-center">
-                                  <div className="text-2xl font-bold text-foreground" data-testid={`text-queue-position-${queue.id}`}>
-                                    {queue.position}
+                            {/* Position Display */}
+                            {queue.status === 'waiting' ? (
+                              <div className="relative mb-6">
+                                <svg className="w-32 h-32 mx-auto transform -rotate-90">
+                                  <circle 
+                                    cx="64" cy="64" r="56" 
+                                    stroke="currentColor" 
+                                    strokeWidth="8" 
+                                    fill="none" 
+                                    className="text-muted/20"
+                                  />
+                                  <circle 
+                                    cx="64" cy="64" r="56" 
+                                    stroke="currentColor" 
+                                    strokeWidth="8" 
+                                    fill="none" 
+                                    strokeDasharray="352" 
+                                    strokeDashoffset={352 - (352 * (queue.position > 0 && queue.totalInQueue ? Math.max(0, 1 - queue.position / queue.totalInQueue) : 0))}
+                                    className="text-primary"
+                                  />
+                                </svg>
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <div className="text-center">
+                                    <div className="text-2xl font-bold text-foreground" data-testid={`text-queue-position-${queue.id}`}>
+                                      {queue.position}
+                                    </div>
+                                    <div className="text-sm text-muted-foreground">in queue</div>
                                   </div>
-                                  <div className="text-sm text-muted-foreground">in queue</div>
                                 </div>
                               </div>
-                            </div>
+                            ) : (
+                              <div className="relative mb-6 flex items-center justify-center w-32 h-32 mx-auto">
+                                <div className="text-center">
+                                  <div className="text-2xl font-bold text-primary">
+                                    Now Serving
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                             
                             {/* Wait Time */}
                             <div className="text-center mb-6">
