@@ -206,9 +206,16 @@ export default function Home() {
                   />
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-xl font-semibold text-foreground" data-testid={`text-salon-name-${salon.id}`}>
-                        {salon.name}
-                      </h3>
+                      <div className="flex items-center">
+                        <h3 className="text-xl font-semibold text-foreground" data-testid={`text-salon-name-${salon.id}`}>
+                          {salon.name}
+                        </h3>
+                        {salon.offers && salon.offers.length > 0 && (
+                          <Badge variant="destructive" className="ml-2">
+                            Offer
+                          </Badge>
+                        )}
+                      </div>
                       <div className="flex items-center space-x-1">
                         <Star className="h-4 w-4 text-yellow-400 fill-current" />
                         <span className="text-sm font-medium text-foreground" data-testid={`text-salon-rating-${salon.id}`}>

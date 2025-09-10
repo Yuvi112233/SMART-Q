@@ -183,15 +183,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const services = await storage.getServicesBySalon(salon.id);
           const queues = await storage.getQueuesBySalon(salon.id);
           const waitingQueues = queues.filter(q => q.status === 'waiting');
+          const offers = await storage.getOffersBySalon(salon.id);
 
           return {
             ...salon,
             services,
             queueCount: waitingQueues.length,
             estimatedWaitTime: waitingQueues.length * 15,
+            offers: offers.filter(o => o.isActive),
           };
         })
       );
+
+      // Sort salons: those with active offers first
+      salonsWithDetails.sort((a, b) => {
+        const aHasOffers = a.offers.length > 0;
+        const bHasOffers = b.offers.length > 0;
+        return (bHasOffers ? 1 : 0) - (aHasOffers ? 1 : 0);
+      });
 
       res.json(salonsWithDetails);
     } catch (error) {
