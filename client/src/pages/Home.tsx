@@ -212,7 +212,7 @@ export default function Home() {
                         </h3>
                         {salon.offers && salon.offers.length > 0 && (
                           <Badge variant="destructive" className="ml-2">
-                            Offer
+                            {Math.max(...salon.offers.map(offer => offer.discount))}% OFF
                           </Badge>
                         )}
                       </div>
