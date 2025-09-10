@@ -4,6 +4,7 @@ export interface SalonWithDetails extends Salon {
   services: Service[];
   queueCount: number;
   estimatedWaitTime: number;
+  offers: Offer[];
 }
 
 export interface SalonDetails extends Salon {
