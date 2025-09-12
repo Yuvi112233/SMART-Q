@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../lib/api";
 import { insertUserSchema, loginSchema } from "@shared/schema";
+import { Eye, EyeOff, Sparkles, User, Mail, Phone, Lock, UserCheck, ArrowLeft, Home } from "lucide-react";
 
 const registerFormSchema = insertUserSchema.extend({
   confirmPassword: z.string().min(6),
@@ -26,6 +27,8 @@ type LoginForm = z.infer<typeof loginSchema>;
 export default function Auth() {
   const [, setLocation] = useLocation();
   const [isLogin, setIsLogin] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { login } = useAuth();
   const { toast } = useToast();
 
@@ -110,7 +113,7 @@ export default function Auth() {
     loginMutation.mutate(data);
   };
 
-  const onRegisterSubmit = (data: z.infer<typeof registerSchema>) => {
+  const onRegisterSubmit = (data: RegisterForm) => {
     console.log('Register form submitted with:', data);
     const { confirmPassword, ...userData } = data;
     
@@ -126,198 +129,318 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen gradient-pink flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold text-foreground">
-            {isLogin ? "Welcome back" : "Create your account"}
-          </CardTitle>
-          <CardDescription>
-            {isLogin 
-              ? "Sign in to your SmartQ account" 
-              : "Join SmartQ and skip the wait"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLogin ? (
-            <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="login-email" className="text-sm font-medium text-foreground">
-                  Email
-                </label>
-                <Input 
-                  id="login-email"
-                  type="email" 
-                  placeholder="Enter your email" 
-                  {...loginForm.register("email")}
-                  data-testid="input-email"
-                />
-                {loginForm.formState.errors.email && (
-                  <p className="text-sm text-destructive">{loginForm.formState.errors.email.message}</p>
-                )}
-              </div>
-              
-              <div className="space-y-2">
-                <label htmlFor="login-password" className="text-sm font-medium text-foreground">
-                  Password
-                </label>
-                <Input 
-                  id="login-password"
-                  type="password" 
-                  placeholder="Enter your password" 
-                  {...loginForm.register("password")}
-                  data-testid="input-password"
-                />
-                {loginForm.formState.errors.password && (
-                  <p className="text-sm text-destructive">{loginForm.formState.errors.password.message}</p>
-                )}
-              </div>
-              
-              <Button 
-                type="submit" 
-                className="w-full" 
-                disabled={loginMutation.isPending}
-                data-testid="button-login"
-              >
-                {loginMutation.isPending ? "Signing in..." : "Sign In"}
-              </Button>
-            </form>
-          ) : (
-            <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="register-name" className="text-sm font-medium text-foreground">
-                  Full Name
-                </label>
-                <Input 
-                  id="register-name"
-                  placeholder="Enter your full name" 
-                  {...registerForm.register("name")}
-                  data-testid="input-name"
-                />
-                {registerForm.formState.errors.name && (
-                  <p className="text-sm text-destructive">{registerForm.formState.errors.name.message}</p>
-                )}
-              </div>
-              
-              <div className="space-y-2">
-                <label htmlFor="register-email" className="text-sm font-medium text-foreground">
-                  Email
-                </label>
-                <Input 
-                  id="register-email"
-                  type="email" 
-                  placeholder="Enter your email" 
-                  {...registerForm.register("email")}
-                  data-testid="input-email"
-                />
-                {registerForm.formState.errors.email && (
-                  <p className="text-sm text-destructive">{registerForm.formState.errors.email.message}</p>
-                )}
-              </div>
-              
-              <div className="space-y-2">
-                <label htmlFor="register-phone" className="text-sm font-medium text-foreground">
-                  Phone Number
-                </label>
-                <Input 
-                  id="register-phone"
-                  type="tel" 
-                  placeholder="Enter your phone number (10-15 digits)" 
-                  {...registerForm.register("phone")}
-                  data-testid="input-phone"
-                />
-                {registerForm.formState.errors.phone && (
-                  <p className="text-sm text-destructive">{registerForm.formState.errors.phone.message}</p>
-                )}
-              </div>
-              
-              <div className="space-y-2">
-                <label htmlFor="register-role" className="text-sm font-medium text-foreground">
-                  Account Type
-                </label>
-                <Select 
-                  defaultValue="customer" 
-                  onValueChange={(value) => registerForm.setValue("role", value === "salon" ? "salon_owner" : value)}
-                  data-testid="select-role"
-                >
-                  <SelectTrigger id="register-role">
-                    <SelectValue placeholder="Select account type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="customer">Customer</SelectItem>
-                    <SelectItem value="salon">Salon Owner</SelectItem>
-                  </SelectContent>
-                </Select>
-                {registerForm.formState.errors.role && (
-                  <p className="text-sm text-destructive">{registerForm.formState.errors.role.message}</p>
-                )}
-              </div>
-              
-              <div className="space-y-2">
-                <label htmlFor="register-password" className="text-sm font-medium text-foreground">
-                  Password
-                </label>
-                <Input 
-                  id="register-password"
-                  type="password" 
-                  placeholder="Create a password" 
-                  {...registerForm.register("password")}
-                  data-testid="input-password"
-                />
-                {registerForm.formState.errors.password && (
-                  <p className="text-sm text-destructive">{registerForm.formState.errors.password.message}</p>
-                )}
-              </div>
-              
-              <div className="space-y-2">
-                <label htmlFor="register-confirm-password" className="text-sm font-medium text-foreground">
-                  Confirm Password
-                </label>
-                <Input 
-                  id="register-confirm-password"
-                  type="password" 
-                  placeholder="Confirm your password" 
-                  {...registerForm.register("confirmPassword")}
-                  data-testid="input-confirm-password"
-                />
-                {registerForm.formState.errors.confirmPassword && (
-                  <p className="text-sm text-destructive">{registerForm.formState.errors.confirmPassword.message}</p>
-                )}
-              </div>
-              
-              <Button 
-                type="submit" 
-                className="w-full" 
-                disabled={registerMutation.isPending}
-                data-testid="button-register"
-              >
-                {registerMutation.isPending ? "Creating account..." : "Create Account"}
-              </Button>
-            </form>
-          )}
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Home Button */}
+      <button
+        onClick={() => setLocation("/")}
+        className="absolute top-6 left-6 z-20 flex items-center justify-center w-12 h-12 bg-white/90 backdrop-blur-sm rounded-full shadow-lg border border-white/20 hover:bg-white hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+        aria-label="Go to home page"
+      >
+        <ArrowLeft className="w-5 h-5 text-gray-700" />
+      </button>
 
-          <div className="mt-6 text-center">
-            <Button
-              variant="ghost"
-              className="text-sm"
-              onClick={() => {
-                setIsLogin(!isLogin);
-                // Only reset the form that's being switched to
-                if (isLogin) {
-                  registerForm.reset();
-                } else {
-                  loginForm.reset();
-                }
-              }}
-              data-testid="button-toggle-auth"
-            >
-              {isLogin 
-                ? "Don't have an account? Sign up" 
-                : "Already have an account? Sign in"}
-            </Button>
+      {/* Background decorative elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-purple-400/20 to-pink-400/20 rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-tr from-blue-400/20 to-purple-400/20 rounded-full blur-3xl"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-pink-300/10 to-purple-300/10 rounded-full blur-3xl"></div>
+      </div>
+
+      <div className="w-full max-w-md relative z-10">
+        {/* App Logo/Brand */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl mb-4 shadow-lg">
+            <Sparkles className="w-8 h-8 text-white" />
           </div>
-        </CardContent>
-      </Card>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+            SmartQ
+          </h1>
+          <p className="text-gray-600 text-sm mt-1">Skip the wait, book your spot</p>
+        </div>
+
+        {/* Auth Toggle Tabs */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-1 mb-6 shadow-lg border border-white/20">
+          <div className="grid grid-cols-2 gap-1">
+            <button
+              onClick={() => {
+                setIsLogin(true);
+                registerForm.reset();
+                setShowPassword(false);
+                setShowConfirmPassword(false);
+              }}
+              className={`py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-300 ${
+                isLogin
+                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              Sign In
+            </button>
+            <button
+              onClick={() => {
+                setIsLogin(false);
+                loginForm.reset();
+                setShowPassword(false);
+                setShowConfirmPassword(false);
+              }}
+              className={`py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-300 ${
+                !isLogin
+                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              Sign Up
+            </button>
+          </div>
+        </div>
+
+        {/* Main Auth Card */}
+        <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl border border-white/20 overflow-hidden">
+          <div className="p-8">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                {isLogin ? "Welcome back!" : "Join SmartQ"}
+              </h2>
+              <p className="text-gray-600">
+                {isLogin 
+                  ? "Sign in to your account to continue" 
+                  : "Create your account and start skipping queues"}
+              </p>
+            </div>
+
+            {isLogin ? (
+              <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-6">
+                {/* Email Input */}
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                    <Mail className="w-4 h-4" />
+                    Email Address
+                  </label>
+                  <div className="relative">
+                    <Input 
+                      type="email" 
+                      placeholder="Enter your email address"
+                      className="h-14 pl-4 pr-4 text-base rounded-2xl border-2 border-gray-200 focus:border-purple-500 focus:ring-0 bg-gray-50/50 transition-all duration-300"
+                      {...loginForm.register("email")}
+                      data-testid="input-email"
+                    />
+                  </div>
+                  {loginForm.formState.errors.email && (
+                    <p className="text-sm text-red-500 flex items-center gap-1 mt-1">
+                      {loginForm.formState.errors.email.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* Password Input */}
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                    <Lock className="w-4 h-4" />
+                    Password
+                  </label>
+                  <div className="relative">
+                    <Input 
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Enter your password"
+                      className="h-14 pl-4 pr-12 text-base rounded-2xl border-2 border-gray-200 focus:border-purple-500 focus:ring-0 bg-gray-50/50 transition-all duration-300"
+                      {...loginForm.register("password")}
+                      data-testid="input-password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                  {loginForm.formState.errors.password && (
+                    <p className="text-sm text-red-500 flex items-center gap-1 mt-1">
+                      {loginForm.formState.errors.password.message}
+                    </p>
+                  )}
+                </div>
+
+                {/* Sign In Button */}
+                <Button 
+                  type="submit" 
+                  disabled={loginMutation.isPending}
+                  className="w-full h-14 text-base font-semibold rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
+                  data-testid="button-login"
+                >
+                  {loginMutation.isPending ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      Signing in...
+                    </div>
+                  ) : (
+                    "Sign In"
+                  )}
+                </Button>
+              </form>
+            ) : (
+              <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-5">
+                {/* Full Name Input */}
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                    <User className="w-4 h-4" />
+                    Full Name
+                  </label>
+                  <Input 
+                    placeholder="Enter your full name"
+                    className="h-14 pl-4 pr-4 text-base rounded-2xl border-2 border-gray-200 focus:border-purple-500 focus:ring-0 bg-gray-50/50 transition-all duration-300"
+                    {...registerForm.register("name")}
+                    data-testid="input-name"
+                  />
+                  {registerForm.formState.errors.name && (
+                    <p className="text-sm text-red-500">{registerForm.formState.errors.name.message}</p>
+                  )}
+                </div>
+
+                {/* Email Input */}
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                    <Mail className="w-4 h-4" />
+                    Email Address
+                  </label>
+                  <Input 
+                    type="email" 
+                    placeholder="Enter your email address"
+                    className="h-14 pl-4 pr-4 text-base rounded-2xl border-2 border-gray-200 focus:border-purple-500 focus:ring-0 bg-gray-50/50 transition-all duration-300"
+                    {...registerForm.register("email")}
+                    data-testid="input-email"
+                  />
+                  {registerForm.formState.errors.email && (
+                    <p className="text-sm text-red-500">{registerForm.formState.errors.email.message}</p>
+                  )}
+                </div>
+
+                {/* Phone Input */}
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                    <Phone className="w-4 h-4" />
+                    Phone Number
+                  </label>
+                  <Input 
+                    type="tel" 
+                    placeholder="Enter your phone number"
+                    className="h-14 pl-4 pr-4 text-base rounded-2xl border-2 border-gray-200 focus:border-purple-500 focus:ring-0 bg-gray-50/50 transition-all duration-300"
+                    {...registerForm.register("phone")}
+                    data-testid="input-phone"
+                  />
+                  {registerForm.formState.errors.phone && (
+                    <p className="text-sm text-red-500">{registerForm.formState.errors.phone.message}</p>
+                  )}
+                </div>
+
+                {/* Account Type Select */}
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                    <UserCheck className="w-4 h-4" />
+                    Account Type
+                  </label>
+                  <Select 
+                    defaultValue="customer" 
+                    onValueChange={(value) => registerForm.setValue("role", value === "salon" ? "salon_owner" : value)}
+                    data-testid="select-role"
+                  >
+                    <SelectTrigger className="h-14 text-base rounded-2xl border-2 border-gray-200 focus:border-purple-500 focus:ring-0 bg-gray-50/50">
+                      <SelectValue placeholder="Select account type" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-2">
+                      <SelectItem value="customer" className="text-base py-3">Customer</SelectItem>
+                      <SelectItem value="salon" className="text-base py-3">Salon Owner</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {registerForm.formState.errors.role && (
+                    <p className="text-sm text-red-500">{registerForm.formState.errors.role.message}</p>
+                  )}
+                </div>
+
+                {/* Password Input */}
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                    <Lock className="w-4 h-4" />
+                    Password
+                  </label>
+                  <div className="relative">
+                    <Input 
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Create a strong password"
+                      className="h-14 pl-4 pr-12 text-base rounded-2xl border-2 border-gray-200 focus:border-purple-500 focus:ring-0 bg-gray-50/50 transition-all duration-300"
+                      {...registerForm.register("password")}
+                      data-testid="input-password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                  {registerForm.formState.errors.password && (
+                    <p className="text-sm text-red-500">{registerForm.formState.errors.password.message}</p>
+                  )}
+                </div>
+
+                {/* Confirm Password Input */}
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                    <Lock className="w-4 h-4" />
+                    Confirm Password
+                  </label>
+                  <div className="relative">
+                    <Input 
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="Confirm your password"
+                      className="h-14 pl-4 pr-12 text-base rounded-2xl border-2 border-gray-200 focus:border-purple-500 focus:ring-0 bg-gray-50/50 transition-all duration-300"
+                      {...registerForm.register("confirmPassword")}
+                      data-testid="input-confirm-password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                  {registerForm.formState.errors.confirmPassword && (
+                    <p className="text-sm text-red-500">{registerForm.formState.errors.confirmPassword.message}</p>
+                  )}
+                </div>
+
+                {/* Create Account Button */}
+                <Button 
+                  type="submit" 
+                  disabled={registerMutation.isPending}
+                  className="w-full h-14 text-base font-semibold rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 border-0 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] mt-6"
+                  data-testid="button-register"
+                >
+                  {registerMutation.isPending ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      Creating account...
+                    </div>
+                  ) : (
+                    "Create Account"
+                  )}
+                </Button>
+              </form>
+            )}
+          </div>
+        </div>
+
+        {/* Footer Text */}
+        <div className="text-center mt-6">
+          <p className="text-sm text-gray-600">
+            By continuing, you agree to SmartQ's{" "}
+            <span className="text-purple-600 font-medium">Terms of Service</span> and{" "}
+            <span className="text-purple-600 font-medium">Privacy Policy</span>
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
