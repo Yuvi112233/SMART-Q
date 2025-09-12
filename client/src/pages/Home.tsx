@@ -17,6 +17,8 @@ export default function Home() {
   const allSalonsRef = useRef<HTMLElement>(null);
   const favoritesRef = useRef<HTMLElement>(null);
   const [showFavoritesSection, setShowFavoritesSection] = useState(false);
+  const [exploreFilter, setExploreFilter] = useState<'highly-rated' | 'nearest'>('highly-rated');
+  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
 
   const { data: salons = [], isLoading, error } = useQuery<SalonWithDetails[]>({
     queryKey: ['/api/salons'],
@@ -44,6 +46,64 @@ export default function Home() {
     const matchesLocation = !location || salon.location.toLowerCase().includes(location.toLowerCase());
     return matchesSearch && matchesLocation;
   });
+
+  // Calculate distance between two points using Haversine formula
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371; // Radius of the Earth in kilometers
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
+
+  // Get user's geolocation
+  const getUserLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+        },
+        (error) => {
+          console.error("Error getting location:", error);
+          // Fallback to manual location input or default location
+          setUserLocation({ lat: 30.7333, lng: 76.7794 }); // Default to Chandigarh
+        }
+      );
+    } else {
+      console.error("Geolocation is not supported by this browser.");
+      setUserLocation({ lat: 30.7333, lng: 76.7794 }); // Default to Chandigarh
+    }
+  };
+
+  // Get explore salons based on filter
+  const exploreSalons = useMemo(() => {
+    if (exploreFilter === 'highly-rated') {
+      return [...salons]
+        .sort((a, b) => (b.rating || 0) - (a.rating || 0))
+        .slice(0, 5);
+    } else if (exploreFilter === 'nearest' && userLocation) {
+      return [...salons]
+        .map(salon => ({
+          ...salon,
+          distance: calculateDistance(
+            userLocation.lat,
+            userLocation.lng,
+            // Assuming salon has lat/lng or we parse from location string
+            parseFloat(salon.lat || '30.7333'),
+            parseFloat(salon.lng || '76.7794')
+          )
+        }))
+        .sort((a, b) => (a.distance || 0) - (b.distance || 0))
+        .slice(0, 5);
+    }
+    return [];
+  }, [salons, exploreFilter, userLocation]);
 
   // Sort salons by offers for top section
   const topSalonsWithOffers = [...salons]
@@ -319,19 +379,72 @@ export default function Home() {
       <section className="py-6 px-4">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Explore</h2>
-          <div className="flex gap-3 justify-center">
-            <Button className="px-6 h-10 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-medium rounded-full shadow-md">
-              <Gift className="w-4 h-4 mr-2" />
-              Offers
-            </Button>
-            <Button variant="outline" className="px-6 h-10 border-2 border-yellow-300 text-yellow-700 font-medium rounded-full hover:bg-yellow-50">
+          <div className="flex gap-3 justify-center mb-6">
+            <Button 
+              onClick={() => setExploreFilter('highly-rated')}
+              className={`px-6 h-10 font-medium rounded-full shadow-md ${
+                exploreFilter === 'highly-rated' 
+                  ? 'bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white' 
+                  : 'bg-white border-2 border-yellow-300 text-yellow-700 hover:bg-yellow-50'
+              }`}
+            >
               <Star className="w-4 h-4 mr-2" />
               Highly Rated
             </Button>
-            <Button variant="outline" className="px-6 h-10 border-2 border-blue-300 text-blue-700 font-medium rounded-full hover:bg-blue-50">
+            <Button 
+              onClick={() => {
+                setExploreFilter('nearest');
+                if (!userLocation) {
+                  getUserLocation();
+                }
+              }}
+              className={`px-6 h-10 font-medium rounded-full shadow-md ${
+                exploreFilter === 'nearest' 
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white' 
+                  : 'bg-white border-2 border-blue-300 text-blue-700 hover:bg-blue-50'
+              }`}
+            >
               <MapPin className="w-4 h-4 mr-2" />
               Nearest
             </Button>
+          </div>
+
+          {/* Explore Salons Display */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+            {exploreSalons.map((salon) => (
+              <Link key={salon.id} href={`/salon/${salon.id}`}>
+                <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300">
+                  <div className="relative">
+                    <img 
+                      src="https://images.unsplash.com/photo-1560066984-138dadb4c035?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=200" 
+                      alt={salon.name}
+                      className="w-full h-32 object-cover"
+                    />
+                    {salon.offers && salon.offers.length > 0 && (
+                      <Badge className="absolute top-2 right-2 bg-red-500 text-white">
+                        {Math.max(...salon.offers.map(offer => offer.discount))}% OFF
+                      </Badge>
+                    )}
+                  </div>
+                  <CardContent className="p-4">
+                    <h3 className="font-semibold text-gray-900 mb-1">{salon.name}</h3>
+                    <p className="text-sm text-gray-600 mb-2">{salon.location}</p>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <Star className="h-4 w-4 text-yellow-400 fill-current mr-1" />
+                        <span className="text-sm font-medium">{salon.rating}</span>
+                      </div>
+                      <span className="text-xs text-gray-500">{salon.queueCount} in queue</span>
+                    </div>
+                    {exploreFilter === 'nearest' && (salon as any).distance && (
+                      <p className="text-xs text-blue-600 mt-1">
+                        {((salon as any).distance).toFixed(1)} km away
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
           </div>
         </div>
       </section>
