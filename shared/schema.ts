@@ -23,6 +23,7 @@ export const salons = pgTable("salons", {
   name: text("name").notNull(),
   description: text("description"),
   location: text("location").notNull(),
+  type: text("type", { enum: ["men", "women", "unisex"] }).notNull().default("unisex"),
   operatingHours: jsonb("operating_hours").$type<{
     monday?: { open: string; close: string };
     tuesday?: { open: string; close: string };

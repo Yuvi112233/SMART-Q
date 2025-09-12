@@ -11,6 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Users, 
   Clock, 
@@ -107,6 +108,7 @@ export default function Dashboard() {
       name: "",
       description: "",
       location: "",
+      type: "unisex",
       operatingHours: {},
       images: [],
     },
@@ -389,6 +391,28 @@ export default function Dashboard() {
                           <FormControl>
                             <Input placeholder="Enter salon location" {...field} data-testid="input-salon-location" />
                           </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={salonForm.control}
+                      name="type"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Salon Type</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-salon-type">
+                                <SelectValue placeholder="Select salon type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="men">Men's Salon</SelectItem>
+                              <SelectItem value="women">Women's Salon</SelectItem>
+                              <SelectItem value="unisex">Unisex Salon</SelectItem>
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}

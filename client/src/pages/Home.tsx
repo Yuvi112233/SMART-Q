@@ -19,10 +19,16 @@ export default function Home() {
   const [showFavoritesSection, setShowFavoritesSection] = useState(false);
   const [exploreFilter, setExploreFilter] = useState<'highly-rated' | 'nearest'>('highly-rated');
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [selectedSalonType, setSelectedSalonType] = useState<'men' | 'women' | 'unisex'>('unisex');
 
-  const { data: salons = [], isLoading, error } = useQuery<SalonWithDetails[]>({
+  const { data: salons = [], isLoading, error } = useQuery({
     queryKey: ['/api/salons'],
   });
+
+  if (error) {
+    console.error('Error loading salons:', error);
+  }
+
 
   useEffect(() => {
     if ((searchQuery || location) && allSalonsRef.current) {
@@ -42,6 +48,10 @@ export default function Home() {
       return false;
     }
     
+    
+    // Filter by salon type first
+    const matchesType = salon.type === selectedSalonType;
+    
     // Search in salon name OR services
     const matchesSearch = !searchQuery || 
       salon.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -50,7 +60,7 @@ export default function Home() {
       );
     
     const matchesLocation = !location || salon.location.toLowerCase().includes(location.toLowerCase());
-    return matchesSearch && matchesLocation;
+    return matchesType && matchesSearch && matchesLocation;
   });
 
   // Calculate distance between two points using Haversine formula
@@ -87,14 +97,16 @@ export default function Home() {
     }
   };
 
-  // Get explore salons based on filter
+  // Get explore salons based on filter and salon type
   const exploreSalons = useMemo(() => {
+    const typedSalons = salons.filter(salon => salon.type === selectedSalonType);
+    
     if (exploreFilter === 'highly-rated') {
-      return [...salons]
+      return [...typedSalons]
         .sort((a, b) => (b.rating || 0) - (a.rating || 0))
         .slice(0, 5);
     } else if (exploreFilter === 'nearest' && userLocation) {
-      return [...salons]
+      return [...typedSalons]
         .map(salon => ({
           ...salon,
           distance: calculateDistance(
@@ -109,11 +121,11 @@ export default function Home() {
         .slice(0, 5);
     }
     return [];
-  }, [salons, exploreFilter, userLocation]);
+  }, [salons, exploreFilter, userLocation, selectedSalonType]);
 
-  // Sort salons by offers for top section
+  // Sort salons by offers for top section (filtered by type)
   const topSalonsWithOffers = [...salons]
-    .filter(salon => salon.offers && salon.offers.length > 0)
+    .filter(salon => salon.type === selectedSalonType && salon.offers && salon.offers.length > 0)
     .sort((a, b) => {
       const maxOfferA = Math.max(...(a.offers?.map(offer => offer.discount) || [0]));
       const maxOfferB = Math.max(...(b.offers?.map(offer => offer.discount) || [0]));
@@ -122,60 +134,143 @@ export default function Home() {
 
   const favoriteSalons = useMemo(() => {
     if (!user || !user.favoriteSalons) return [];
-    return salons.filter(salon => user.favoriteSalons.includes(salon.id));
-  }, [salons, user]);
+    return salons.filter(salon => salon.type === selectedSalonType && user.favoriteSalons.includes(salon.id));
+  }, [salons, user, selectedSalonType]);
 
-  // Salon service categories data - inspired by food delivery apps
-  const salonServiceCategories = [
-    {
-      id: 1,
-      name: "Haircut",
-      image: "https://images.unsplash.com/photo-1562322140-8baeececf3df?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150",
-      searchQuery: "haircut"
-    },
-    {
-      id: 2,
-      name: "Hair Color",
-      image: "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150",
-      searchQuery: "hair color"
-    },
-    {
-      id: 3,
-      name: "Facial",
-      image: "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150",
-      searchQuery: "facial"
-    },
-    {
-      id: 4,
-      name: "Manicure",
-      image: "https://images.unsplash.com/photo-1604654894610-df63bc536371?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150",
-      searchQuery: "manicure"
-    },
-    {
-      id: 5,
-      name: "Massage",
-      image: "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150",
-      searchQuery: "massage"
-    },
-    {
-      id: 6,
-      name: "Eyebrow",
-      image: "https://images.unsplash.com/photo-1588681664899-f142ff2dc9b1?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150",
-      searchQuery: "eyebrow"
-    },
-    {
-      id: 7,
-      name: "Pedicure",
-      image: "https://images.unsplash.com/photo-1519014816548-bf5fe059798b?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150",
-      searchQuery: "pedicure"
-    },
-    {
-      id: 8,
-      name: "Makeup",
-      image: "https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150",
-      searchQuery: "makeup"
-    }
-  ];
+  // Type-specific service categories
+  const getServiceCategories = (type: 'men' | 'women' | 'unisex') => {
+    const categories = {
+      men: [
+        {
+          id: 1,
+          name: "Haircut",
+          image: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150",
+          searchQuery: "haircut"
+        },
+        {
+          id: 2,
+          name: "Beard Trim",
+          image: "https://images.unsplash.com/photo-1621605815971-fbc98d665033?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150",
+          searchQuery: "beard"
+        },
+        {
+          id: 3,
+          name: "Shave",
+          image: "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150",
+          searchQuery: "shave"
+        },
+        {
+          id: 4,
+          name: "Hair Styling",
+          image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150",
+          searchQuery: "styling"
+        },
+        {
+          id: 5,
+          name: "Head Massage",
+          image: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150",
+          searchQuery: "massage"
+        },
+        {
+          id: 6,
+          name: "Men's Facial",
+          image: "https://images.unsplash.com/photo-1559599101-f09722fb4948?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150",
+          searchQuery: "facial"
+        }
+      ],
+      women: [
+        {
+          id: 1,
+          name: "Haircut",
+          image: "https://images.unsplash.com/photo-1562322140-8baeececf3df?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150",
+          searchQuery: "haircut"
+        },
+        {
+          id: 2,
+          name: "Hair Color",
+          image: "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150",
+          searchQuery: "hair color"
+        },
+        {
+          id: 3,
+          name: "Facial",
+          image: "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150",
+          searchQuery: "facial"
+        },
+        {
+          id: 4,
+          name: "Manicure",
+          image: "https://images.unsplash.com/photo-1604654894610-df63bc536371?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150",
+          searchQuery: "manicure"
+        },
+        {
+          id: 5,
+          name: "Pedicure",
+          image: "https://images.unsplash.com/photo-1519014816548-bf5fe059798b?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150",
+          searchQuery: "pedicure"
+        },
+        {
+          id: 6,
+          name: "Makeup",
+          image: "https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150",
+          searchQuery: "makeup"
+        },
+        {
+          id: 7,
+          name: "Eyebrow",
+          image: "https://images.unsplash.com/photo-1588681664899-f142ff2dc9b1?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150",
+          searchQuery: "eyebrow"
+        },
+        {
+          id: 8,
+          name: "Massage",
+          image: "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150",
+          searchQuery: "massage"
+        }
+      ],
+      unisex: [
+        {
+          id: 1,
+          name: "Haircut",
+          image: "https://images.unsplash.com/photo-1562322140-8baeececf3df?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150",
+          searchQuery: "haircut"
+        },
+        {
+          id: 2,
+          name: "Hair Color",
+          image: "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150",
+          searchQuery: "hair color"
+        },
+        {
+          id: 3,
+          name: "Facial",
+          image: "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150",
+          searchQuery: "facial"
+        },
+        {
+          id: 4,
+          name: "Massage",
+          image: "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150",
+          searchQuery: "massage"
+        },
+        {
+          id: 5,
+          name: "Hair Styling",
+          image: "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150",
+          searchQuery: "styling"
+        },
+        {
+          id: 6,
+          name: "Manicure",
+          image: "https://images.unsplash.com/photo-1604654894610-df63bc536371?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150",
+          searchQuery: "manicure"
+        }
+      ]
+    };
+    return categories[type];
+  };
+
+  const salonServiceCategories = getServiceCategories(selectedSalonType);
 
   // Service inspiration cards
   const serviceInspirations = [
@@ -223,8 +318,38 @@ export default function Home() {
     }
   ];
 
+  // Get theme colors and background based on salon type
+  const getThemeConfig = (type: 'men' | 'women' | 'unisex') => {
+    const themes = {
+      men: {
+        background: "bg-gradient-to-br from-blue-50 via-slate-50 to-gray-50",
+        heroImage: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080",
+        primaryColor: "blue",
+        accentColor: "slate",
+        cardBg: "bg-white/90 border-blue-100"
+      },
+      women: {
+        background: "bg-gradient-to-br from-pink-50 via-rose-50 to-purple-50",
+        heroImage: "https://images.unsplash.com/photo-1562322140-8baeececf3df?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080",
+        primaryColor: "pink",
+        accentColor: "rose",
+        cardBg: "bg-white/90 border-pink-100"
+      },
+      unisex: {
+        background: "bg-gradient-to-br from-purple-50 via-indigo-50 to-blue-50",
+        heroImage: "https://images.unsplash.com/photo-1560066984-138dadb4c035?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080",
+        primaryColor: "purple",
+        accentColor: "indigo",
+        cardBg: "bg-white/90 border-purple-100"
+      }
+    };
+    return themes[type];
+  };
+
+  const currentTheme = getThemeConfig(selectedSalonType);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50">
+    <div className={`min-h-screen ${currentTheme.background}`}>
 
       {/* Hero Section - Different for logged in/out users */}
       {user ? (
@@ -233,11 +358,17 @@ export default function Home() {
           {/* Background Image */}
           <div className="absolute inset-0">
             <img 
-              src="https://images.unsplash.com/photo-1560066984-138dadb4c035?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080" 
-              alt="Salon Interior"
+              src={currentTheme.heroImage} 
+              alt={`${selectedSalonType.charAt(0).toUpperCase() + selectedSalonType.slice(1)} Salon Interior`}
               className="w-full h-full object-cover"
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-900/80 via-pink-900/70 to-orange-900/80"></div>
+            <div className={`absolute inset-0 ${
+              selectedSalonType === 'men' 
+                ? 'bg-gradient-to-r from-blue-900/80 via-slate-900/70 to-gray-900/80'
+                : selectedSalonType === 'women'
+                ? 'bg-gradient-to-r from-pink-900/80 via-rose-900/70 to-purple-900/80'
+                : 'bg-gradient-to-r from-purple-900/80 via-indigo-900/70 to-blue-900/80'
+            }`}></div>
           </div>
           
           {/* Content */}
@@ -284,18 +415,30 @@ export default function Home() {
           {/* Background Image */}
           <div className="absolute inset-0">
             <img 
-              src="https://images.unsplash.com/photo-1560066984-138dadb4c035?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080" 
-              alt="Modern Salon Interior"
+              src={currentTheme.heroImage} 
+              alt={`${selectedSalonType.charAt(0).toUpperCase() + selectedSalonType.slice(1)} Salon Interior`}
               className="w-full h-full object-cover"
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-900/85 via-pink-900/75 to-orange-900/85"></div>
+            <div className={`absolute inset-0 ${
+              selectedSalonType === 'men' 
+                ? 'bg-gradient-to-r from-blue-900/85 via-slate-900/75 to-gray-900/85'
+                : selectedSalonType === 'women'
+                ? 'bg-gradient-to-r from-pink-900/85 via-rose-900/75 to-purple-900/85'
+                : 'bg-gradient-to-r from-purple-900/85 via-indigo-900/75 to-blue-900/85'
+            }`}></div>
           </div>
           
           {/* Decorative Elements */}
           <div className="absolute inset-0 overflow-hidden">
-            <div className="absolute top-20 right-10 w-32 h-32 bg-white/5 rounded-full blur-xl"></div>
-            <div className="absolute bottom-20 left-10 w-24 h-24 bg-yellow-300/10 rounded-full blur-lg"></div>
-            <div className="absolute top-1/2 left-1/3 w-16 h-16 bg-pink-300/10 rounded-full blur-md"></div>
+            <div className={`absolute top-20 right-10 w-32 h-32 rounded-full blur-xl ${
+              selectedSalonType === 'men' ? 'bg-blue-300/10' : selectedSalonType === 'women' ? 'bg-pink-300/10' : 'bg-purple-300/10'
+            }`}></div>
+            <div className={`absolute bottom-20 left-10 w-24 h-24 rounded-full blur-lg ${
+              selectedSalonType === 'men' ? 'bg-slate-300/10' : selectedSalonType === 'women' ? 'bg-rose-300/10' : 'bg-indigo-300/10'
+            }`}></div>
+            <div className={`absolute top-1/2 left-1/3 w-16 h-16 rounded-full blur-md ${
+              selectedSalonType === 'men' ? 'bg-gray-300/10' : selectedSalonType === 'women' ? 'bg-purple-300/10' : 'bg-blue-300/10'
+            }`}></div>
           </div>
           
           {/* Content */}
@@ -307,15 +450,21 @@ export default function Home() {
               </div>
               
               <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-white leading-tight mb-4 tracking-tight">
-                Smart<span className="text-yellow-300">Q</span>
+                Smart<span className={`${
+                  selectedSalonType === 'men' ? 'text-blue-300' : selectedSalonType === 'women' ? 'text-pink-300' : 'text-purple-300'
+                }`}>Q</span>
               </h1>
               <p className="text-lg md:text-xl text-white/90 mb-8 max-w-2xl mx-auto font-light">
-                Virtual Queue for Salons
+                {selectedSalonType === 'men' ? 'Men\'s Salon Queue System' : 
+                 selectedSalonType === 'women' ? 'Women\'s Salon Queue System' : 
+                 'Unisex Salon Queue System'}
               </p>
               
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-10">
                 <Link href="/auth">
-                  <Button className="bg-white text-purple-600 hover:bg-gray-100 px-8 py-4 rounded-2xl font-bold text-lg shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:scale-105">
+                  <Button className={`bg-white hover:bg-gray-100 px-8 py-4 rounded-2xl font-bold text-lg shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:scale-105 ${
+                    selectedSalonType === 'men' ? 'text-blue-600' : selectedSalonType === 'women' ? 'text-pink-600' : 'text-purple-600'
+                  }`}>
                     Get Started Free
                     <Zap className="w-5 h-5 ml-2" />
                   </Button>
@@ -345,25 +494,73 @@ export default function Home() {
         </section>
       )}
 
+      {/* Salon Type Selector */}
+      <section className="py-6 px-4 bg-white/80 backdrop-blur-sm border-b border-gray-100">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex justify-center">
+            <div className="inline-flex bg-gray-100 rounded-2xl p-1 shadow-inner">
+              <button
+                onClick={() => setSelectedSalonType('men')}
+                className={`px-6 py-3 rounded-xl font-semibold text-sm transition-all duration-300 ${
+                  selectedSalonType === 'men'
+                    ? 'bg-blue-500 text-white shadow-lg transform scale-105'
+                    : 'text-gray-600 hover:text-blue-500 hover:bg-white/50'
+                }`}
+              >
+                👨 Men's Salons
+              </button>
+              <button
+                onClick={() => setSelectedSalonType('women')}
+                className={`px-6 py-3 rounded-xl font-semibold text-sm transition-all duration-300 ${
+                  selectedSalonType === 'women'
+                    ? 'bg-pink-500 text-white shadow-lg transform scale-105'
+                    : 'text-gray-600 hover:text-pink-500 hover:bg-white/50'
+                }`}
+              >
+                👩 Women's Salons
+              </button>
+              <button
+                onClick={() => setSelectedSalonType('unisex')}
+                className={`px-6 py-3 rounded-xl font-semibold text-sm transition-all duration-300 ${
+                  selectedSalonType === 'unisex'
+                    ? 'bg-purple-500 text-white shadow-lg transform scale-105'
+                    : 'text-gray-600 hover:text-purple-500 hover:bg-white/50'
+                }`}
+              >
+                👫 Unisex Salons
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Quick Stats & Action Buttons */}
       <section className="py-8 px-4">
         <div className="max-w-7xl mx-auto">
           {/* Stats Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <div className="bg-white/80 backdrop-blur rounded-2xl p-4 text-center shadow-lg">
-              <div className="text-2xl font-bold text-purple-600">{salons.length}</div>
-              <div className="text-sm text-gray-600">Partner Salons</div>
+            <div className={`${currentTheme.cardBg} backdrop-blur rounded-2xl p-4 text-center shadow-lg border`}>
+              <div className={`text-2xl font-bold ${
+                selectedSalonType === 'men' ? 'text-blue-600' : selectedSalonType === 'women' ? 'text-pink-600' : 'text-purple-600'
+              }`}>{filteredSalons.length}</div>
+              <div className="text-sm text-gray-600">{selectedSalonType.charAt(0).toUpperCase() + selectedSalonType.slice(1)} Salons</div>
             </div>
-            <div className="bg-white/80 backdrop-blur rounded-2xl p-4 text-center shadow-lg">
-              <div className="text-2xl font-bold text-pink-600">15min</div>
+            <div className={`${currentTheme.cardBg} backdrop-blur rounded-2xl p-4 text-center shadow-lg border`}>
+              <div className={`text-2xl font-bold ${
+                selectedSalonType === 'men' ? 'text-slate-600' : selectedSalonType === 'women' ? 'text-rose-600' : 'text-indigo-600'
+              }`}>15min</div>
               <div className="text-sm text-gray-600">Avg Wait Time</div>
             </div>
-            <div className="bg-white/80 backdrop-blur rounded-2xl p-4 text-center shadow-lg">
-              <div className="text-2xl font-bold text-orange-600">4.8★</div>
+            <div className={`${currentTheme.cardBg} backdrop-blur rounded-2xl p-4 text-center shadow-lg border`}>
+              <div className={`text-2xl font-bold ${
+                selectedSalonType === 'men' ? 'text-blue-600' : selectedSalonType === 'women' ? 'text-pink-600' : 'text-purple-600'
+              }`}>4.8★</div>
               <div className="text-sm text-gray-600">Avg Rating</div>
             </div>
-            <div className="bg-white/80 backdrop-blur rounded-2xl p-4 text-center shadow-lg">
-              <div className="text-2xl font-bold text-green-600">24/7</div>
+            <div className={`${currentTheme.cardBg} backdrop-blur rounded-2xl p-4 text-center shadow-lg border`}>
+              <div className={`text-2xl font-bold ${
+                selectedSalonType === 'men' ? 'text-gray-600' : selectedSalonType === 'women' ? 'text-purple-600' : 'text-blue-600'
+              }`}>24/7</div>
               <div className="text-sm text-gray-600">Available</div>
             </div>
           </div>
@@ -373,8 +570,12 @@ export default function Home() {
             <Button
               className={`flex-1 h-14 font-semibold rounded-2xl shadow-lg transition-all duration-300 ${
                 !showFavoritesSection 
-                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-purple-200' 
-                  : 'bg-white text-gray-700 border-2 border-gray-200 hover:border-purple-300'
+                  ? `${selectedSalonType === 'men' 
+                      ? 'bg-gradient-to-r from-blue-600 to-slate-600' 
+                      : selectedSalonType === 'women' 
+                      ? 'bg-gradient-to-r from-pink-600 to-rose-600' 
+                      : 'bg-gradient-to-r from-purple-600 to-indigo-600'} text-white shadow-lg` 
+                  : 'bg-white text-gray-700 border-2 border-gray-200 hover:border-gray-300'
               }`}
               onClick={() => setShowFavoritesSection(false)}
             >
@@ -384,8 +585,12 @@ export default function Home() {
             <Button
               className={`flex-1 h-14 font-semibold rounded-2xl shadow-lg transition-all duration-300 ${
                 showFavoritesSection 
-                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-purple-200' 
-                  : 'bg-white text-gray-700 border-2 border-gray-200 hover:border-purple-300'
+                  ? `${selectedSalonType === 'men' 
+                      ? 'bg-gradient-to-r from-blue-600 to-slate-600' 
+                      : selectedSalonType === 'women' 
+                      ? 'bg-gradient-to-r from-pink-600 to-rose-600' 
+                      : 'bg-gradient-to-r from-purple-600 to-indigo-600'} text-white shadow-lg` 
+                  : 'bg-white text-gray-700 border-2 border-gray-200 hover:border-gray-300'
               }`}
               onClick={() => {
                 if (!user) {
@@ -493,7 +698,13 @@ export default function Home() {
                       Start exploring salons and add your favorites by clicking the heart icon!
                     </p>
                     <Button 
-                      className="mt-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-2 rounded-full"
+                      className={`mt-4 text-white px-6 py-2 rounded-full ${
+                        selectedSalonType === 'men' 
+                          ? 'bg-gradient-to-r from-blue-600 to-slate-600' 
+                          : selectedSalonType === 'women' 
+                          ? 'bg-gradient-to-r from-pink-600 to-rose-600' 
+                          : 'bg-gradient-to-r from-purple-600 to-indigo-600'
+                      }`}
                       onClick={() => setShowFavoritesSection(false)}
                     >
                       Explore Salons
