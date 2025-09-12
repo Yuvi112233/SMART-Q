@@ -169,6 +169,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ====================
+  // FAVORITES ROUTES
+  // ====================
+  app.post('/api/users/favorites', authenticateToken, async (req, res) => {
+    try {
+      const { salonId } = req.body;
+      if (!salonId) {
+        return res.status(400).json({ message: 'salonId is required' });
+      }
+      const updatedUser = await storage.addFavoriteSalon(req.user!.userId, salonId);
+      res.json(updatedUser);
+    } catch (error) {
+      res.status(500).json({ message: 'Server error', error });
+    }
+  });
+
+  app.delete('/api/users/favorites/:salonId', authenticateToken, async (req, res) => {
+    try {
+      const { salonId } = req.params;
+      const updatedUser = await storage.removeFavoriteSalon(req.user!.userId, salonId);
+      res.json(updatedUser);
+    } catch (error) {
+      res.status(500).json({ message: 'Server error', error });
+    }
+  });
+
+  // ====================
   // SALON ROUTES
   // ====================
   app.get('/api/salons', async (req, res) => {

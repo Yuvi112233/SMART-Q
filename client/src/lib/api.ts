@@ -115,4 +115,15 @@ export const api = {
       return response.json();
     },
   },
+
+  users: {
+    addFavorite: async (salonId: string) => {
+      const response = await apiRequest('POST', '/api/users/favorites', { salonId });
+      return response.json();
+    },
+    removeFavorite: async (salonId: string) => {
+      const response = await apiRequest('DELETE', `/api/users/favorites/${salonId}`);
+      return response.json();
+    },
+  },
 };

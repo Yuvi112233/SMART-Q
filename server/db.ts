@@ -23,9 +23,11 @@ const userSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
+  phone: { type: String, unique: true, sparse: true },
   password: { type: String, required: true },
   role: { type: String, required: true, default: 'customer', enum: ['customer', 'salon_owner'] },
   loyaltyPoints: { type: Number, default: 0 },
+  favoriteSalons: { type: [String], default: [] },
   createdAt: { type: Date, default: Date.now },
 });
 

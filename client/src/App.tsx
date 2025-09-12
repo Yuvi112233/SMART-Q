@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -12,6 +13,7 @@ import SalonProfile from "./pages/SalonProfile";
 import Queue from "./pages/Queue";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "@/pages/not-found";
+import LoadingScreen from "./components/LoadingScreen";
 
 function Router() {
   return (
@@ -27,19 +29,34 @@ function Router() {
 }
 
 function App() {
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate app loading
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 2000); // 2 seconds
+
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <AuthProvider>
-          <WebSocketProvider>
-            <Layout>
-              <Toaster />
-              <Router />
-            </Layout>
-          </WebSocketProvider>
-        </AuthProvider>
-      </TooltipProvider>
-    </QueryClientProvider>
+    <>
+      {isLoading ? <LoadingScreen /> : (
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider>
+            <AuthProvider>
+              <WebSocketProvider>
+                <Layout>
+                  <Toaster />
+                  <Router />
+                </Layout>
+              </WebSocketProvider>
+            </AuthProvider>
+          </TooltipProvider>
+        </QueryClientProvider>
+      )}
+    </>
   );
 }
 

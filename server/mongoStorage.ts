@@ -31,21 +31,26 @@ export class MongoStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = randomUUID();
-    // Hash password
     const hashedPassword = await bcrypt.hash(insertUser.password, 10);
-    
-    const user: Omit<User, 'phone'> & { phone?: string } = {
-      ...insertUser,
+
+    const userObject = {
       id,
+      name: insertUser.name,
+      email: insertUser.email,
+      phone: insertUser.phone, // Explicitly set the phone number
       password: hashedPassword,
+      role: insertUser.role || 'customer',
       loyaltyPoints: 0,
       createdAt: new Date(),
     };
-    
-    delete user.phone; // Ensure phone is not saved
 
-    await UserModel.create(user);
-    return user as User;
+    const createdUserDoc = await UserModel.create(userObject);
+
+    // Mongoose's .create() can return a Mongoose document, not a plain object.
+    // We convert it to a plain object to match the return type.
+    const user = createdUserDoc.toObject() as User;
+
+    return user;
   }
 
   async updateUser(id: string, updates: Partial<User>): Promise<User | undefined> {
@@ -60,6 +65,24 @@ export class MongoStorage implements IStorage {
       { new: true }
     ).lean();
     
+    return updatedUser ? updatedUser as unknown as User : undefined;
+  }
+
+  async addFavoriteSalon(userId: string, salonId: string): Promise<User | undefined> {
+    const updatedUser = await UserModel.findOneAndUpdate(
+      { id: userId },
+      { $addToSet: { favoriteSalons: salonId } },
+      { new: true }
+    ).lean();
+    return updatedUser ? updatedUser as unknown as User : undefined;
+  }
+
+  async removeFavoriteSalon(userId: string, salonId: string): Promise<User | undefined> {
+    const updatedUser = await UserModel.findOneAndUpdate(
+      { id: userId },
+      { $pull: { favoriteSalons: salonId } },
+      { new: true }
+    ).lean();
     return updatedUser ? updatedUser as unknown as User : undefined;
   }
 

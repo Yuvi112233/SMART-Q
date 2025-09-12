@@ -12,6 +12,7 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   role: text("role").notNull().default("customer"),
   loyaltyPoints: integer("loyalty_points").notNull().default(0),
+  favoriteSalons: jsonb("favorite_salons").$type<string[]>().default([]),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
 });
 
@@ -88,9 +89,7 @@ export const insertUserSchema = createInsertSchema(users).omit({
   loyaltyPoints: true,
   createdAt: true,
 }).extend({
-  phone: z.string()
-    .min(10, "Phone number must be at least 10 digits")
-    .regex(/^\+[1-9]\d{1,14}$/, "Phone number must include country code (e.g., +1234567890)"),
+  phone: z.union([z.string().min(10).max(15), z.literal('')]).optional().nullable(),
   role: z.enum(["customer", "salon_owner"]).default("customer"),
 });
 
