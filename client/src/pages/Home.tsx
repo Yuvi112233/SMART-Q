@@ -42,7 +42,13 @@ export default function Home() {
       return false;
     }
     
-    const matchesSearch = !searchQuery || salon.name.toLowerCase().includes(searchQuery.toLowerCase());
+    // Search in salon name OR services
+    const matchesSearch = !searchQuery || 
+      salon.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      salon.services?.some(service => 
+        service.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    
     const matchesLocation = !location || salon.location.toLowerCase().includes(location.toLowerCase());
     return matchesSearch && matchesLocation;
   });
@@ -118,6 +124,58 @@ export default function Home() {
     if (!user || !user.favoriteSalons) return [];
     return salons.filter(salon => user.favoriteSalons.includes(salon.id));
   }, [salons, user]);
+
+  // Salon service categories data - inspired by food delivery apps
+  const salonServiceCategories = [
+    {
+      id: 1,
+      name: "Haircut",
+      image: "https://images.unsplash.com/photo-1562322140-8baeececf3df?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150",
+      searchQuery: "haircut"
+    },
+    {
+      id: 2,
+      name: "Hair Color",
+      image: "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150",
+      searchQuery: "hair color"
+    },
+    {
+      id: 3,
+      name: "Facial",
+      image: "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150",
+      searchQuery: "facial"
+    },
+    {
+      id: 4,
+      name: "Manicure",
+      image: "https://images.unsplash.com/photo-1604654894610-df63bc536371?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150",
+      searchQuery: "manicure"
+    },
+    {
+      id: 5,
+      name: "Massage",
+      image: "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150",
+      searchQuery: "massage"
+    },
+    {
+      id: 6,
+      name: "Eyebrow",
+      image: "https://images.unsplash.com/photo-1588681664899-f142ff2dc9b1?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150",
+      searchQuery: "eyebrow"
+    },
+    {
+      id: 7,
+      name: "Pedicure",
+      image: "https://images.unsplash.com/photo-1519014816548-bf5fe059798b?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150",
+      searchQuery: "pedicure"
+    },
+    {
+      id: 8,
+      name: "Makeup",
+      image: "https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&h=150",
+      searchQuery: "makeup"
+    }
+  ];
 
   // Service inspiration cards
   const serviceInspirations = [
@@ -449,50 +507,31 @@ export default function Home() {
         </div>
       </section>
 
-      {/* What's on Your Mind Section - 2 Vertical Rows Scrollable Together */}
+      {/* What's on Your Mind Section - Circular Categories like Food Delivery */}
       <section className="py-6">
         <div className="max-w-7xl mx-auto px-4">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">What's on your mind?</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">What's on your mind?</h2>
           
-          {/* Container for both rows - scrolls together */}
-          <div className="overflow-x-auto scrollbar-hide">
-            <div className="flex flex-col gap-4 min-w-max">
-              {/* First Row */}
-              <div className="flex gap-4">
-                {serviceInspirations.slice(0, 3).map((service) => {
-                  const IconComponent = service.icon;
-                  return (
-                    <Card key={service.id} className="min-w-[200px] overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer">
-                      <div className={`relative h-24 bg-gradient-to-br ${service.gradient} flex items-center justify-center`}>
-                        <IconComponent className="w-8 h-8 text-white" />
-                      </div>
-                      <CardContent className="p-4">
-                        <h3 className="font-semibold text-gray-900 mb-2">{service.title}</h3>
-                        <p className="text-sm text-gray-600 leading-relaxed">{service.description}</p>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
+          {/* Circular Service Categories Grid */}
+          <div className="grid grid-cols-4 md:grid-cols-8 gap-6 max-w-4xl mx-auto">
+            {salonServiceCategories.map((category) => (
+              <div 
+                key={category.id} 
+                className="flex flex-col items-center cursor-pointer group"
+                onClick={() => setSearchQuery(category.searchQuery)}
+              >
+                <div className="w-16 h-16 md:w-20 md:h-20 rounded-full overflow-hidden shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:scale-105">
+                  <img 
+                    src={category.image} 
+                    alt={category.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <span className="text-sm font-medium text-gray-700 mt-2 text-center group-hover:text-purple-600 transition-colors">
+                  {category.name}
+                </span>
               </div>
-
-              {/* Second Row */}
-              <div className="flex gap-4">
-                {serviceInspirations.slice(3, 6).map((service) => {
-                  const IconComponent = service.icon;
-                  return (
-                    <Card key={service.id} className="min-w-[200px] overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer">
-                      <div className={`relative h-24 bg-gradient-to-br ${service.gradient} flex items-center justify-center`}>
-                        <IconComponent className="w-8 h-8 text-white" />
-                      </div>
-                      <CardContent className="p-4">
-                        <h3 className="font-semibold text-gray-900 mb-2">{service.title}</h3>
-                        <p className="text-sm text-gray-600 leading-relaxed">{service.description}</p>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
