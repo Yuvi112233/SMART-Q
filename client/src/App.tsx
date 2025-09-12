@@ -34,18 +34,9 @@ function Router() {
 function App() {
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    // Simulate app loading
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 2000); // 2 seconds
-
-    return () => clearTimeout(timer);
-  }, []);
-
   return (
     <>
-      {isLoading ? <LoadingScreen /> : (
+      {isLoading ? <LoadingScreen onComplete={() => setIsLoading(false)} /> : (
         <QueryClientProvider client={queryClient}>
           <TooltipProvider>
             <AuthProvider>
