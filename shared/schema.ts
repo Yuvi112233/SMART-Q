@@ -53,7 +53,9 @@ export const queues = pgTable("queues", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   salonId: varchar("salon_id").notNull().references(() => salons.id, { onDelete: "cascade" }),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  serviceId: varchar("service_id").notNull().references(() => services.id, { onDelete: "cascade" }),
+  serviceIds: jsonb("service_ids").$type<string[]>().notNull(), // Multiple services
+  totalPrice: integer("total_price").notNull(), // Total price for all services
+  appliedOffers: jsonb("applied_offers").$type<string[]>().default([]), // Applied offer IDs
   status: text("status", { enum: ["waiting", "in-progress", "completed", "no-show"] }).notNull().default("waiting"),
   position: integer("position").notNull(),
   timestamp: timestamp("timestamp").notNull().default(sql`now()`),

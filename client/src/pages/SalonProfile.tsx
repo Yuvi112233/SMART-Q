@@ -5,29 +5,29 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Star, MapPin, Clock, Users, Tag, Heart } from "lucide-react";
+import { Star, MapPin, Clock, Users, Tag, Heart, Plus, ShoppingCart } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "../context/AuthContext";
+import { useCart } from "../context/CartContext";
 import { api } from "../lib/api";
 import { queryClient } from "../lib/queryClient";
-import { insertQueueSchema, insertReviewSchema } from "@shared/schema";
+import { insertReviewSchema } from "@shared/schema";
 import type { SalonDetails } from "../types";
 
-const queueFormSchema = insertQueueSchema.omit({ userId: true });
 const reviewFormSchema = insertReviewSchema.omit({ userId: true, salonId: true });
 
-type QueueForm = z.infer<typeof queueFormSchema>;
 type ReviewForm = z.infer<typeof reviewFormSchema>;
 
 export default function SalonProfile() {
   const { id } = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const { user, updateUser } = useAuth();
+  const { addItem, items, getItemCount } = useCart();
 
   const isFavorited = useMemo(() => {
     if (!user || !user.favoriteSalons) return false;
@@ -81,24 +81,32 @@ export default function SalonProfile() {
       addFavoriteMutation.mutate();
     }
   };
+
+  const handleAddToCart = (service: SalonDetails['services'][0]) => {
+    if (!user) {
+      setLocation('/auth');
+      return;
+    }
+    if (!salon) return;
+    
+    addItem(service, salon.id, salon.name);
+    toast({
+      title: "Service added to cart!",
+      description: `${service.name} has been added to your selection.`,
+    });
+  };
+
+  const isServiceInCart = (serviceId: string) => {
+    return items.some(item => item.service.id === serviceId);
+  };
   const { toast } = useToast();
   const [showReviewForm, setShowReviewForm] = useState(false);
-  const [selectedOffer, setSelectedOffer] = useState<SalonDetails['offers'][0] | null>(null);
-  const [selectedService, setSelectedService] = useState<SalonDetails['services'][0] | null>(null);
 
   const { data: salon, isLoading } = useQuery<SalonDetails>({
     queryKey: ['/api/salons', id],
     enabled: !!id,
   });
 
-  const queueForm = useForm<QueueForm>({
-    resolver: zodResolver(queueFormSchema),
-    defaultValues: {
-      salonId: id || "",
-      serviceId: "",
-      status: "waiting",
-    },
-  });
 
   const reviewForm = useForm<ReviewForm>({
     resolver: zodResolver(reviewFormSchema),
@@ -108,23 +116,6 @@ export default function SalonProfile() {
     },
   });
 
-  const joinQueueMutation = useMutation({
-    mutationFn: api.queue.join,
-    onSuccess: () => {
-      toast({
-        title: "Joined queue successfully!",
-        description: "You'll receive notifications about your position.",
-      });
-      setLocation('/queue');
-    },
-    onError: (error) => {
-      toast({
-        title: "Failed to join queue",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
 
   const addReviewMutation = useMutation({
     mutationFn: api.reviews.create,
@@ -145,32 +136,6 @@ export default function SalonProfile() {
       });
     },
   });
-
-  const totalPrice = useMemo(() => {
-    if (!selectedService) return 0;
-    if (!selectedOffer) return selectedService.price.toFixed(2);
-    const discount = (selectedService.price * selectedOffer.discount) / 100;
-    return (selectedService.price - discount).toFixed(2);
-  }, [selectedService, selectedOffer]);
-
-  const handleApplyOffer = (offer: SalonDetails['offers'][0]) => {
-    if (selectedOffer?.id === offer.id) {
-      setSelectedOffer(null);
-    } else {
-      setSelectedOffer(offer);
-    }
-  };
-
-  const onQueueSubmit = (data: QueueForm) => {
-    if (!user) {
-      setLocation('/auth');
-      return;
-    }
-    joinQueueMutation.mutate({
-      ...data,
-      userId: user.id,
-    });
-  };
 
   const onReviewSubmit = (data: ReviewForm) => {
     if (!user) {
@@ -221,233 +186,129 @@ export default function SalonProfile() {
   return (
     <div className="min-h-screen gradient-pink py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Salon Header */}
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-8">
-          <img 
-            src="https://images.unsplash.com/photo-1560066984-138dadb4c035?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=300" 
-            alt={salon.name}
-            className="w-full h-64 object-cover"
-          />
-          <div className="p-8">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <div className="flex items-center space-x-4">
-                  <h1 className="text-3xl font-bold text-foreground" data-testid="text-salon-name">
-                    {salon.name}
-                  </h1>
-                  {user && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={handleFavoriteClick}
-                      disabled={addFavoriteMutation.isPending || removeFavoriteMutation.isPending}
-                      data-testid="button-favorite"
-                    >
-                      <Heart className={`h-6 w-6 ${isFavorited ? 'text-red-500 fill-current' : 'text-muted-foreground'}`} />
-                    </Button>
-                  )}
-                </div>
-                <div className="flex items-center space-x-4 text-muted-foreground">
-                  <div className="flex items-center space-x-1">
-                    <MapPin className="h-4 w-4" />
-                    <span data-testid="text-salon-location">{salon.location}</span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <Star className="h-4 w-4 text-yellow-400 fill-current" />
-                    <span data-testid="text-salon-rating">{salon.rating}</span>
-                  </div>
-                </div>
-              </div>
-              <div className="text-right">
-                <div className="flex items-center space-x-2 mb-2">
-                  <div className={`w-3 h-3 rounded-full ${salon.queueCount > 5 ? 'bg-yellow-500' : 'bg-green-500 pulse-pink'}`}></div>
-                  <span className="text-sm text-muted-foreground" data-testid="text-queue-status">
-                    {salon.queueCount} in queue
-                  </span>
-                </div>
-                <span className="text-lg font-semibold text-foreground" data-testid="text-wait-time">
-                  ~{salon.estimatedWaitTime} min wait
-                </span>
-              </div>
-            </div>
-            {salon.description && (
-              <p className="text-muted-foreground" data-testid="text-salon-description">
-                {salon.description}
-              </p>
+        {/* Salon Header - Centered Layout */}
+        <div className="mb-8 text-center">
+          <div className="flex items-center justify-center space-x-3 mb-3">
+            <h1 className="text-3xl font-bold text-foreground" data-testid="text-salon-name">
+              {salon.name}
+            </h1>
+            {user && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleFavoriteClick}
+                disabled={addFavoriteMutation.isPending || removeFavoriteMutation.isPending}
+                data-testid="button-favorite"
+              >
+                <Heart className={`h-6 w-6 ${isFavorited ? 'text-red-500 fill-current' : 'text-muted-foreground'}`} />
+              </Button>
             )}
+          </div>
+          
+          <div className="flex items-center justify-center space-x-6 text-muted-foreground mb-4">
+            <div className="flex items-center space-x-1">
+              <MapPin className="h-4 w-4" />
+              <span data-testid="text-salon-location">{salon.location}</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <Star className="h-4 w-4 text-yellow-400 fill-current" />
+              <span data-testid="text-salon-rating">{salon.rating}</span>
+            </div>
+          </div>
+          
+          <div className="flex items-center justify-center space-x-4 text-sm text-muted-foreground">
+            <div className="flex items-center space-x-2">
+              <div className={`w-3 h-3 rounded-full ${salon.queueCount > 5 ? 'bg-yellow-500' : 'bg-green-500'}`}></div>
+              <span data-testid="text-queue-status">
+                {salon.queueCount} in queue
+              </span>
+            </div>
+            <span data-testid="text-wait-time">
+              ~{salon.estimatedWaitTime} min wait
+            </span>
           </div>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8">
-          {/* Services */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Clock className="h-5 w-5" />
-                <span>Services</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {salon.services.map((service) => (
-                  <div key={service.id} className="flex items-center justify-between p-4 bg-secondary rounded-lg" data-testid={`service-${service.id}`}>
-                    <div>
-                      <h4 className="font-semibold text-foreground" data-testid={`text-service-name-${service.id}`}>
-                        {service.name}
-                      </h4>
-                      <p className="text-sm text-muted-foreground" data-testid={`text-service-duration-${service.id}`}>
-                        {service.duration} minutes
-                      </p>
-                      {service.description && (
-                        <p className="text-sm text-muted-foreground mt-1" data-testid={`text-service-description-${service.id}`}>
-                          {service.description}
-                        </p>
-                      )}
+        {/* Services Section - Clean Layout as per Sketch */}
+        <div className="mb-8">
+          {/* Services Header */}
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-foreground flex items-center space-x-2">
+              <Clock className="h-6 w-6" />
+              <span>Services</span>
+            </h2>
+            {getItemCount() > 0 && (
+              <Button
+                onClick={() => setLocation('/queue-summary')}
+                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              >
+                <ShoppingCart className="w-4 h-4 mr-2" />
+                View Cart ({getItemCount()})
+              </Button>
+            )}
+          </div>
+
+          {/* Services List */}
+          <div className="space-y-4">
+            {salon.services.map((service) => (
+              <div key={service.id} className="flex items-center justify-between p-4 bg-white rounded-xl shadow-sm border border-gray-100" data-testid={`service-${service.id}`}>
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <h3 className="font-semibold text-gray-900 text-lg" data-testid={`text-service-name-${service.id}`}>
+                      {service.name}
+                    </h3>
+                    <div className="flex items-center">
+                      <Star className="w-4 h-4 text-yellow-400 fill-current" />
+                      <span className="text-sm font-medium text-gray-600 ml-1">4.5</span>
                     </div>
-                    <div className="text-right">
-                      <span className="text-lg font-semibold text-foreground" data-testid={`text-service-price-${service.id}`}>
-                        ${service.price}
+                  </div>
+                  
+                  <div className="flex items-center gap-4 text-gray-600">
+                    <div className="flex items-center">
+                      <Clock className="w-4 h-4 mr-1" />
+                      <span className="text-sm" data-testid={`text-service-duration-${service.id}`}>
+                        {service.duration} min
                       </span>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Join Queue */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Users className="h-5 w-5" />
-                <span>Join Queue</span>
-              </CardTitle>
-              <CardDescription>
-                Select a service to join the queue
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...queueForm}>
-                <form onSubmit={queueForm.handleSubmit(onQueueSubmit)} className="space-y-4">
-                  <FormField
-                    control={queueForm.control}
-                    name="serviceId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Service</FormLabel>
-                        <Select 
-                          onValueChange={(value) => {
-                            field.onChange(value);
-                            const service = salon.services.find(s => s.id === value);
-                            setSelectedService(service || null);
-                          }} 
-                          value={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger data-testid="select-service">
-                              <SelectValue placeholder="Select a service" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {salon.services.map((service) => (
-                              <SelectItem key={service.id} value={service.id}>
-                                {service.name} - ${service.price}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {selectedService && (
-                    <div className="mt-4 p-4 bg-secondary rounded-lg">
-                      <h4 className="font-semibold text-foreground mb-2">Total Charges</h4>
-                      <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground">Base Price:</span>
-                        <span className="font-semibold">${selectedService.price}</span>
-                      </div>
-                      {selectedOffer && (
-                        <div className="flex justify-between items-center mt-2">
-                          <span className="text-muted-foreground">
-                            Discount ({selectedOffer.title} - {selectedOffer.discount}%):
-                          </span>
-                          <span className="font-semibold text-green-500">
-                            -${(selectedService.price * selectedOffer.discount / 100).toFixed(2)}
-                          </span>
-                        </div>
-                      )}
-                      <div className="flex justify-between items-center mt-2 font-bold text-lg">
-                        <span>Total:</span>
-                        <span>
-                          ${totalPrice}
-                        </span>
-                      </div>
+                    <div className="text-xl font-bold text-purple-600" data-testid={`text-service-price-${service.id}`}>
+                      ${service.price}
                     </div>
-                  )}
-
-                  <Button 
-                    type="submit" 
-                    className="w-full" 
-                    disabled={joinQueueMutation.isPending || !selectedService}
-                    data-testid="button-join-queue"
-                  >
-                    {joinQueueMutation.isPending ? "Joining..." : "Join Queue"}
-                  </Button>
-                </form>
-              </Form>
-
-              {/* Current Offers */}
-              <div className="mt-6">
-                <h4 className="font-semibold text-foreground mb-3 flex items-center space-x-2">
-                  <Tag className="h-4 w-4" />
-                  <span>Current Offers</span>
-                </h4>
-                {salon.offers.length > 0 ? (
-                  <div className="space-y-3">
-                    {salon.offers
-                      .filter(offer => offer.isActive)
-                      .map((offer) => (
-                        <div key={offer.id} className="bg-card border rounded-lg p-4 shadow-sm" data-testid={`offer-${offer.id}`}>
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <h5 className="font-semibold text-foreground" data-testid={`text-offer-title-${offer.id}`}>
-                                {offer.title}
-                              </h5>
-                              <p className="text-sm text-muted-foreground mt-1" data-testid={`text-offer-description-${offer.id}`}>
-                                {offer.description}
-                              </p>
-                              <div className="flex items-center mt-2 space-x-4">
-                                <Badge variant="success" className="text-white" data-testid={`badge-offer-discount-${offer.id}`}>
-                                  {offer.discount}% OFF
-                                </Badge>
-                                <span className="text-xs text-muted-foreground">
-                                  Valid until {new Date(offer.validityPeriod).toLocaleDateString()}
-                                </span>
-                              </div>
-                            </div>
-                            <Button 
-                              size="sm"
-                              variant={selectedOffer?.id === offer.id ? "secondary" : "default"}
-                              onClick={() => handleApplyOffer(offer)}
-                              disabled={!selectedService}
-                              data-testid={`button-apply-offer-${offer.id}`}
-                            >
-                              {selectedOffer?.id === offer.id ? "Applied" : "Apply"}
-                            </Button>
-                          </div>
-                        </div>
-                    ))}
                   </div>
-                ) : (
-                  <div className="p-4 bg-secondary rounded-lg text-center">
-                    <p className="text-muted-foreground">No active offers available</p>
-                  </div>
-                )}
+                </div>
+                
+                <Button
+                  onClick={() => handleAddToCart(service)}
+                  disabled={isServiceInCart(service.id)}
+                  className={`${
+                    isServiceInCart(service.id)
+                      ? 'bg-green-500 hover:bg-green-600 text-white'
+                      : 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white'
+                  } px-6 py-2 rounded-lg font-medium`}
+                  data-testid={`button-add-service-${service.id}`}
+                >
+                  {isServiceInCart(service.id) ? 'Added' : 'Add'}
+                </Button>
               </div>
-            </CardContent>
-          </Card>
+            ))}
+          </div>
+          
+          {/* Cart Summary - Only show if services are selected */}
+          {getItemCount() > 0 && (
+            <div className="mt-6 p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-200">
+              <div className="text-center">
+                <p className="text-sm text-gray-600 mb-3">
+                  {getItemCount()} service{getItemCount() > 1 ? 's' : ''} selected
+                </p>
+                <Button
+                  onClick={() => setLocation('/queue-summary')}
+                  className="w-full h-12 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold rounded-xl"
+                >
+                  <ShoppingCart className="w-5 h-5 mr-2" />
+                  Review & Join Queue
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Reviews Section */}

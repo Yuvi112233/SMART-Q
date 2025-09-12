@@ -178,15 +178,33 @@ export default function Queue() {
                             <div>
                               <h4 className="font-semibold text-foreground mb-2">Service Details</h4>
                               <div className="space-y-2">
-                                <p className="text-foreground" data-testid={`text-service-name-${queue.id}`}>
-                                  <strong>Service:</strong> {queue.service?.name}
-                                </p>
-                                <p className="text-muted-foreground" data-testid={`text-service-duration-${queue.id}`}>
-                                  <strong>Duration:</strong> {queue.service?.duration} minutes
-                                </p>
-                                <p className="text-muted-foreground" data-testid={`text-service-price-${queue.id}`}>
-                                  <strong>Price:</strong> ${queue.service?.price}
-                                </p>
+                                {queue.serviceIds && queue.serviceIds.length > 1 ? (
+                                  <div>
+                                    <p className="text-foreground" data-testid={`text-services-count-${queue.id}`}>
+                                      <strong>Services:</strong> {queue.serviceIds.length} selected
+                                    </p>
+                                    <p className="text-muted-foreground" data-testid={`text-total-price-${queue.id}`}>
+                                      <strong>Total Price:</strong> ${queue.totalPrice}
+                                    </p>
+                                    {queue.appliedOffers && queue.appliedOffers.length > 0 && (
+                                      <p className="text-green-600 text-sm">
+                                        <strong>Offers Applied:</strong> {queue.appliedOffers.length} discount(s)
+                                      </p>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div>
+                                    <p className="text-foreground" data-testid={`text-service-name-${queue.id}`}>
+                                      <strong>Service:</strong> {queue.service?.name}
+                                    </p>
+                                    <p className="text-muted-foreground" data-testid={`text-service-duration-${queue.id}`}>
+                                      <strong>Duration:</strong> {queue.service?.duration} minutes
+                                    </p>
+                                    <p className="text-muted-foreground" data-testid={`text-service-price-${queue.id}`}>
+                                      <strong>Price:</strong> ${queue.service?.price}
+                                    </p>
+                                  </div>
+                                )}
                               </div>
                             </div>
 

@@ -564,9 +564,16 @@ export default function Dashboard() {
                                     <p className="font-medium text-foreground" data-testid={`text-customer-name-${queue.id}`}>
                                       {queue.user?.name || 'Customer'}
                                     </p>
-                                    <p className="text-sm text-muted-foreground" data-testid={`text-service-name-${queue.id}`}>
-                                      {queue.service?.name} • {queue.service?.duration}min
-                                    </p>
+                                    <div className="text-sm text-muted-foreground" data-testid={`text-services-${queue.id}`}>
+                                      {queue.serviceIds && queue.serviceIds.length > 1 ? (
+                                        <div>
+                                          <p className="font-medium">Services: {queue.services?.map(s => s.name).join(', ') || `${queue.serviceIds.length} services`}</p>
+                                          <p className="text-xs">Total: ${queue.totalPrice}</p>
+                                        </div>
+                                      ) : (
+                                        <p>{queue.service?.name} • {queue.service?.duration}min • ${queue.service?.price}</p>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                                 <div className="flex items-center space-x-2">

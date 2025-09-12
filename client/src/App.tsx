@@ -6,10 +6,12 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "./context/AuthContext";
 import { WebSocketProvider } from "./context/WebSocketContext";
+import { CartProvider } from "./context/CartContext";
 import Layout from "./components/Layout";
 import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 import SalonProfile from "./pages/SalonProfile";
+import QueueSummary from "./pages/QueueSummary";
 import Queue from "./pages/Queue";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "@/pages/not-found";
@@ -21,6 +23,7 @@ function Router() {
       <Route path="/" component={Home} />
       <Route path="/auth" component={Auth} />
       <Route path="/salon/:id" component={SalonProfile} />
+      <Route path="/queue-summary" component={QueueSummary} />
       <Route path="/queue" component={Queue} />
       <Route path="/dashboard" component={Dashboard} />
       <Route component={NotFound} />
@@ -47,10 +50,12 @@ function App() {
           <TooltipProvider>
             <AuthProvider>
               <WebSocketProvider>
-                <Layout>
-                  <Toaster />
-                  <Router />
-                </Layout>
+                <CartProvider>
+                  <Layout>
+                    <Toaster />
+                    <Router />
+                  </Layout>
+                </CartProvider>
               </WebSocketProvider>
             </AuthProvider>
           </TooltipProvider>

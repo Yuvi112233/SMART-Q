@@ -190,7 +190,6 @@ export class MongoStorage implements IStorage {
     const queues = await QueueModel.find({ userId }).lean();
     return queues as unknown as Queue[];
   }
-
   async getUserQueuePosition(userId: string, salonId: string): Promise<Queue | undefined> {
     const queue = await QueueModel.findOne({ userId, salonId }).lean();
     return queue ? queue as unknown as Queue : undefined;
@@ -206,6 +205,7 @@ export class MongoStorage implements IStorage {
       position,
       status: "waiting",
       createdAt: new Date(),
+      userId: queue.userId, // Add userId to the newQueue object
     };
     
     await QueueModel.create(newQueue);
@@ -215,7 +215,7 @@ export class MongoStorage implements IStorage {
   async updateQueue(id: string, updates: Partial<Queue>): Promise<Queue | undefined> {
     const updatedQueue = await QueueModel.findOneAndUpdate(
       { id },
-      { $set: updates },
+      updates,
       { new: true }
     ).lean();
     
