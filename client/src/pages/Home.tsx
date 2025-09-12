@@ -224,90 +224,197 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Search Bar at Top */}
-      <section className="bg-white shadow-sm py-4 px-4 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-gray-100 rounded-2xl p-2">
-            <div className="flex flex-col md:flex-row gap-2">
-              <div className="flex-1 relative">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
-                <Input 
-                  type="text" 
-                  placeholder="Search salons or services..." 
-                  className="pl-12 border-0 focus-visible:ring-0 bg-white rounded-xl"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  data-testid="input-search"
-                />
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50">
+
+      {/* Hero Section - Different for logged in/out users */}
+      {user ? (
+        /* Logged In User - Personalized Welcome */
+        <section className="relative overflow-hidden min-h-[60vh] flex items-center">
+          {/* Background Image */}
+          <div className="absolute inset-0">
+            <img 
+              src="https://images.unsplash.com/photo-1560066984-138dadb4c035?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080" 
+              alt="Salon Interior"
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-900/80 via-pink-900/70 to-orange-900/80"></div>
+          </div>
+          
+          {/* Content */}
+          <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+            <div className="text-center">
+              <div className="mb-8">
+                <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center mx-auto mb-4 border border-white/30">
+                  {user.profileImage ? (
+                    <img src={user.profileImage} alt="Profile" className="w-full h-full rounded-full object-cover" />
+                  ) : (
+                    <span className="text-white text-xl font-bold">
+                      {user.name?.charAt(0).toUpperCase() || 'U'}
+                    </span>
+                  )}
+                </div>
+                <h1 className="text-3xl md:text-5xl font-bold text-white mb-3 tracking-tight">
+                  Welcome back, {user.name?.split(' ')[0] || 'User'}! 👋
+                </h1>
+                <p className="text-white/90 text-lg md:text-xl max-w-2xl mx-auto">
+                  Ready to skip the wait? Find your perfect salon below.
+                </p>
               </div>
-              <div className="flex-1 relative">
-                <MapPin className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
-                <Input 
-                  type="text" 
-                  placeholder="Location" 
-                  className="pl-12 border-0 focus-visible:ring-0 bg-white rounded-xl"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  data-testid="input-location"
-                />
+              
+              {/* Search Bar for logged in users */}
+              <div className="max-w-lg mx-auto">
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                  <Input 
+                    type="text" 
+                    placeholder="Search salons or services..." 
+                    className="pl-12 pr-4 py-4 text-lg border-0 focus-visible:ring-2 focus-visible:ring-white/50 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    data-testid="input-search"
+                  />
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-purple-600 via-pink-600 to-blue-600 py-16">
-        {/* Background Text */}
-        <div className="absolute inset-0 flex items-center justify-center opacity-10">
-          <h1 className="text-[20rem] font-black text-white select-none">SMARTQ</h1>
-        </div>
-        
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="animate-fade-in">
-            <h1 className="text-5xl md:text-7xl font-black text-white leading-tight mb-6">
-              Smart<span className="text-yellow-300">Q</span>
-              <br />
-              <span className="text-3xl md:text-4xl font-light">for Salons</span>
-            </h1>
-            <p className="text-xl text-white/90 mb-12 leading-relaxed max-w-2xl mx-auto">
-              Skip the wait, book your spot. Experience the future of salon visits with virtual queues.
-            </p>
+        </section>
+      ) : (
+        /* Not Logged In - Marketing Hero */
+        <section className="relative overflow-hidden min-h-[70vh] flex items-center">
+          {/* Background Image */}
+          <div className="absolute inset-0">
+            <img 
+              src="https://images.unsplash.com/photo-1560066984-138dadb4c035?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080" 
+              alt="Modern Salon Interior"
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-900/85 via-pink-900/75 to-orange-900/85"></div>
           </div>
-        </div>
-      </section>
+          
+          {/* Decorative Elements */}
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="absolute top-20 right-10 w-32 h-32 bg-white/5 rounded-full blur-xl"></div>
+            <div className="absolute bottom-20 left-10 w-24 h-24 bg-yellow-300/10 rounded-full blur-lg"></div>
+            <div className="absolute top-1/2 left-1/3 w-16 h-16 bg-pink-300/10 rounded-full blur-md"></div>
+          </div>
+          
+          {/* Content */}
+          <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full text-center">
+            <div className="mb-8">
+              <div className="inline-flex items-center bg-white/15 backdrop-blur-md rounded-full px-6 py-3 mb-8 border border-white/20">
+                <Sparkles className="w-5 h-5 text-yellow-300 mr-2" />
+                <span className="text-white font-medium text-sm">Skip the Wait, Join the Queue</span>
+              </div>
+              
+              <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-white leading-tight mb-4 tracking-tight">
+                Smart<span className="text-yellow-300">Q</span>
+              </h1>
+              <p className="text-lg md:text-xl text-white/90 mb-8 max-w-2xl mx-auto font-light">
+                Virtual Queue for Salons
+              </p>
+              
+              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-10">
+                <Link href="/auth">
+                  <Button className="bg-white text-purple-600 hover:bg-gray-100 px-8 py-4 rounded-2xl font-bold text-lg shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:scale-105">
+                    Get Started Free
+                    <Zap className="w-5 h-5 ml-2" />
+                  </Button>
+                </Link>
+                <div className="flex items-center text-white/80 text-sm">
+                  <Users className="w-4 h-4 mr-2" />
+                  <span>Join 10,000+ happy customers</span>
+                </div>
+              </div>
+              
+              {/* Search Bar for guests */}
+              <div className="max-w-lg mx-auto">
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                  <Input 
+                    type="text" 
+                    placeholder="Search salons to get started..." 
+                    className="pl-12 pr-4 py-4 text-lg border-0 focus-visible:ring-2 focus-visible:ring-white/50 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    data-testid="input-search"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
-      {/* Quick Action Buttons */}
-      <section className="py-6 px-4">
+      {/* Quick Stats & Action Buttons */}
+      <section className="py-8 px-4">
         <div className="max-w-7xl mx-auto">
-          <div className="flex gap-4 justify-center">
+          {/* Stats Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div className="bg-white/80 backdrop-blur rounded-2xl p-4 text-center shadow-lg">
+              <div className="text-2xl font-bold text-purple-600">{salons.length}</div>
+              <div className="text-sm text-gray-600">Partner Salons</div>
+            </div>
+            <div className="bg-white/80 backdrop-blur rounded-2xl p-4 text-center shadow-lg">
+              <div className="text-2xl font-bold text-pink-600">15min</div>
+              <div className="text-sm text-gray-600">Avg Wait Time</div>
+            </div>
+            <div className="bg-white/80 backdrop-blur rounded-2xl p-4 text-center shadow-lg">
+              <div className="text-2xl font-bold text-orange-600">4.8★</div>
+              <div className="text-sm text-gray-600">Avg Rating</div>
+            </div>
+            <div className="bg-white/80 backdrop-blur rounded-2xl p-4 text-center shadow-lg">
+              <div className="text-2xl font-bold text-green-600">24/7</div>
+              <div className="text-sm text-gray-600">Available</div>
+            </div>
+          </div>
+          
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
             <Button
-              className="flex-1 max-w-40 h-12 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-semibold rounded-xl shadow-lg"
+              className={`flex-1 h-14 font-semibold rounded-2xl shadow-lg transition-all duration-300 ${
+                !showFavoritesSection 
+                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-purple-200' 
+                  : 'bg-white text-gray-700 border-2 border-gray-200 hover:border-purple-300'
+              }`}
               onClick={() => setShowFavoritesSection(false)}
             >
-              <Heart className="w-5 h-5 mr-2" />
+              <Sparkles className="w-5 h-5 mr-2" />
               Recommended
             </Button>
             <Button
-              variant="outline"
-              className="flex-1 max-w-40 h-12 border-2 border-pink-200 text-pink-600 font-semibold rounded-xl hover:bg-pink-50"
-              onClick={() => setShowFavoritesSection(true)}
-              disabled={!user || favoriteSalons.length === 0}
+              className={`flex-1 h-14 font-semibold rounded-2xl shadow-lg transition-all duration-300 ${
+                showFavoritesSection 
+                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-purple-200' 
+                  : 'bg-white text-gray-700 border-2 border-gray-200 hover:border-purple-300'
+              }`}
+              onClick={() => {
+                if (!user) {
+                  // Redirect to login if not authenticated
+                  window.location.href = '/auth';
+                  return;
+                }
+                setShowFavoritesSection(true);
+              }}
+              disabled={user && favoriteSalons.length === 0}
             >
-              <Star className="w-5 h-5 mr-2" />
-              Favorites
+              <Heart className="w-5 h-5 mr-2" />
+              {user ? 'Favorites' : 'Sign in for Favorites'}
             </Button>
           </div>
         </div>
       </section>
 
       {/* Top Salons / Favorites Section */}
-      <section className="py-6">
+      <section className="py-8">
         <div className="max-w-7xl mx-auto px-4">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4 px-2">
-            {showFavoritesSection ? "Your Favorites" : "Top Salons with Offers"}
-          </h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+              {showFavoritesSection ? "💖 Your Favorites" : "🔥 Trending Salons"}
+            </h2>
+            <div className="text-sm text-gray-500">
+              {showFavoritesSection ? `${favoriteSalons.length} saved` : `${topSalonsWithOffers.length} available`}
+            </div>
+          </div>
           
           {/* Container for horizontal scrolling */}
           <div className="overflow-x-auto scrollbar-hide">
@@ -318,37 +425,79 @@ export default function Home() {
                   <div className="flex gap-4">
                     {favoriteSalons.map((salon) => (
                       <Link key={salon.id} href={`/salon/${salon.id}`}>
-                        <Card className="min-w-[280px] overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300">
+                        <Card className="min-w-[320px] overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:scale-105 bg-white/90 backdrop-blur border-0">
                           <div className="relative">
                             <img 
                               src="https://images.unsplash.com/photo-1560066984-138dadb4c035?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=200" 
                               alt={salon.name}
-                              className="w-full h-32 object-cover"
+                              className="w-full h-40 object-cover"
                             />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
                             {salon.offers && salon.offers.length > 0 && (
-                              <Badge className="absolute top-2 right-2 bg-red-500 text-white">
-                                {Math.max(...salon.offers.map(offer => offer.discount))}% OFF
-                              </Badge>
+                              <div className="absolute top-3 right-3 bg-gradient-to-r from-red-500 to-pink-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg">
+                                🎉 {Math.max(...salon.offers.map(offer => offer.discount))}% OFF
+                              </div>
                             )}
+                            <div className="absolute bottom-3 left-3 right-3">
+                              <h3 className="font-bold text-white text-lg mb-1">{salon.name}</h3>
+                              <p className="text-white/90 text-sm flex items-center">
+                                <MapPin className="w-3 h-3 mr-1" />
+                                {salon.location}
+                              </p>
+                            </div>
                           </div>
                           <CardContent className="p-4">
-                            <h3 className="font-semibold text-gray-900 mb-1">{salon.name}</h3>
-                            <p className="text-sm text-gray-600 mb-2">{salon.location}</p>
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center">
-                                <Star className="h-4 w-4 text-yellow-400 fill-current mr-1" />
-                                <span className="text-sm font-medium">{salon.rating}</span>
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center space-x-3">
+                                <div className="flex items-center bg-yellow-50 px-2 py-1 rounded-full">
+                                  <Star className="h-4 w-4 text-yellow-500 fill-current mr-1" />
+                                  <span className="text-sm font-semibold text-yellow-700">{salon.rating}</span>
+                                </div>
+                                <div className="flex items-center text-gray-600">
+                                  <Clock className="h-4 w-4 mr-1" />
+                                  <span className="text-sm">{salon.estimatedWaitTime || 15}min</span>
+                                </div>
                               </div>
-                              <span className="text-xs text-gray-500">{salon.queueCount} in queue</span>
+                              <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                salon.queueCount > 5 
+                                  ? 'bg-orange-100 text-orange-700' 
+                                  : 'bg-green-100 text-green-700'
+                              }`}>
+                                {salon.queueCount} in queue
+                              </div>
                             </div>
+                            <Button 
+                              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-2 rounded-xl transition-all duration-300"
+                              onClick={(e) => {
+                                if (!user) {
+                                  e.preventDefault();
+                                  window.location.href = '/auth';
+                                  return;
+                                }
+                              }}
+                            >
+                              {user ? 'Join Queue' : 'Sign in to Join'}
+                            </Button>
                           </CardContent>
                         </Card>
                       </Link>
                     ))}
                   </div>
                 ) : (
-                  <div className="flex items-center justify-center w-full py-8">
-                    <p className="text-gray-500">No favorite salons added yet.</p>
+                  <div className="flex flex-col items-center justify-center w-full py-12">
+                    <div className="w-24 h-24 bg-gradient-to-r from-purple-100 to-pink-100 rounded-full flex items-center justify-center mb-4">
+                      <Heart className="w-12 h-12 text-purple-400" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-gray-700 mb-2">No favorites yet</h3>
+                    <p className="text-gray-500 text-center max-w-md">
+                      Start exploring salons and add your favorites by clicking the heart icon!
+                    </p>
+                    <Button 
+                      className="mt-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-2 rounded-full"
+                      onClick={() => setShowFavoritesSection(false)}
+                    >
+                      Explore Salons
+                    </Button>
                   </div>
                 )
               ) : (
@@ -423,8 +572,14 @@ export default function Home() {
                     )}
                   </>
                 ) : (
-                  <div className="flex items-center justify-center w-full py-8">
-                    <p className="text-gray-500">No salons with active offers available</p>
+                  <div className="flex flex-col items-center justify-center w-full py-12">
+                    <div className="w-24 h-24 bg-gradient-to-r from-orange-100 to-red-100 rounded-full flex items-center justify-center mb-4">
+                      <Gift className="w-12 h-12 text-orange-400" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-gray-700 mb-2">No offers right now</h3>
+                    <p className="text-gray-500 text-center max-w-md">
+                      Check back soon for amazing deals and offers from our partner salons!
+                    </p>
                   </div>
                 )
               )}
