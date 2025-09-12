@@ -9,6 +9,7 @@ interface AuthContextType {
   login: (user: User, token: string) => void;
   logout: () => void;
   isLoading: boolean;
+  updateUser: (user: User) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -86,6 +87,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     localStorage.removeItem('smartq_user');
   };
 
+  const updateUser = (updatedUserData: User) => {
+    setUser(updatedUserData);
+    localStorage.setItem('smartq_user', JSON.stringify(updatedUserData));
+  };
+
   // Note: Authorization headers are now handled in the apiRequest function
   // which reads the token from localStorage
 
@@ -95,6 +101,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     login,
     logout,
     isLoading: !isInitialized || isVerifying,
+    updateUser,
   };
 
   return (

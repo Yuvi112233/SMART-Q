@@ -68,6 +68,24 @@ export class MongoStorage implements IStorage {
     return updatedUser ? updatedUser as unknown as User : undefined;
   }
 
+  async addFavoriteSalon(userId: string, salonId: string): Promise<User | undefined> {
+    const updatedUser = await UserModel.findOneAndUpdate(
+      { id: userId },
+      { $addToSet: { favoriteSalons: salonId } },
+      { new: true }
+    ).lean();
+    return updatedUser ? updatedUser as unknown as User : undefined;
+  }
+
+  async removeFavoriteSalon(userId: string, salonId: string): Promise<User | undefined> {
+    const updatedUser = await UserModel.findOneAndUpdate(
+      { id: userId },
+      { $pull: { favoriteSalons: salonId } },
+      { new: true }
+    ).lean();
+    return updatedUser ? updatedUser as unknown as User : undefined;
+  }
+
   // Salons
   async getSalon(id: string): Promise<Salon | undefined> {
     const salon = await SalonModel.findOne({ id }).lean();

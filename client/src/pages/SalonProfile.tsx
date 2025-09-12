@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Star, MapPin, Clock, Users, Tag } from "lucide-react";
+import { Star, MapPin, Clock, Users, Tag, Heart } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../lib/api";
@@ -27,7 +27,60 @@ type ReviewForm = z.infer<typeof reviewFormSchema>;
 export default function SalonProfile() {
   const { id } = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
+
+  const isFavorited = useMemo(() => {
+    if (!user || !user.favoriteSalons) return false;
+    return user.favoriteSalons.includes(id || "");
+  }, [user, id]);
+
+  const addFavoriteMutation = useMutation({
+    mutationFn: () => api.users.addFavorite(id!),
+    onSuccess: (updatedUser) => {
+      if (updatedUser) {
+        updateUser(updatedUser);
+        toast({
+          title: "Added to favorites!",
+        });
+      }
+    },
+    onError: () => {
+      toast({
+        title: "Failed to add favorite",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const removeFavoriteMutation = useMutation({
+    mutationFn: () => api.users.removeFavorite(id!),
+    onSuccess: (updatedUser) => {
+      if (updatedUser) {
+        updateUser(updatedUser);
+        toast({
+          title: "Removed from favorites",
+        });
+      }
+    },
+    onError: () => {
+      toast({
+        title: "Failed to remove favorite",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleFavoriteClick = () => {
+    if (!user) {
+      setLocation('/auth');
+      return;
+    }
+    if (isFavorited) {
+      removeFavoriteMutation.mutate();
+    } else {
+      addFavoriteMutation.mutate();
+    }
+  };
   const { toast } = useToast();
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState<SalonDetails['offers'][0] | null>(null);
@@ -178,9 +231,22 @@ export default function SalonProfile() {
           <div className="p-8">
             <div className="flex items-start justify-between mb-4">
               <div>
-                <h1 className="text-3xl font-bold text-foreground mb-2" data-testid="text-salon-name">
-                  {salon.name}
-                </h1>
+                <div className="flex items-center space-x-4">
+                  <h1 className="text-3xl font-bold text-foreground" data-testid="text-salon-name">
+                    {salon.name}
+                  </h1>
+                  {user && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleFavoriteClick}
+                      disabled={addFavoriteMutation.isPending || removeFavoriteMutation.isPending}
+                      data-testid="button-favorite"
+                    >
+                      <Heart className={`h-6 w-6 ${isFavorited ? 'text-red-500 fill-current' : 'text-muted-foreground'}`} />
+                    </Button>
+                  )}
+                </div>
                 <div className="flex items-center space-x-4 text-muted-foreground">
                   <div className="flex items-center space-x-1">
                     <MapPin className="h-4 w-4" />

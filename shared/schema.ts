@@ -12,6 +12,7 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   role: text("role").notNull().default("customer"),
   loyaltyPoints: integer("loyalty_points").notNull().default(0),
+  favoriteSalons: jsonb("favorite_salons").$type<string[]>().default([]),
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
 });
 
