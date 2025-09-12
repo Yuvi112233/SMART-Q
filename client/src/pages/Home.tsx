@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -12,10 +12,17 @@ import type { SalonWithDetails } from "../types";
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [location, setLocation] = useState("");
+  const allSalonsRef = useRef<HTMLElement>(null);
 
   const { data: salons = [], isLoading, error } = useQuery<SalonWithDetails[]>({
     queryKey: ['/api/salons'],
   });
+
+  useEffect(() => {
+    if ((searchQuery || location) && allSalonsRef.current) {
+      allSalonsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [searchQuery, location]);
 
   // Handle loading and error states
   if (error) {
@@ -314,7 +321,7 @@ export default function Home() {
       </section>
 
       {/* All Salons Section */}
-      <section id="all-salons" className="py-8 px-4">
+      <section id="all-salons" ref={allSalonsRef} className="py-8 px-4">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">All Salons</h2>
           
@@ -356,7 +363,7 @@ export default function Home() {
             </div>
           ) : (
             <div className="space-y-4">
-              {salons.map((salon) => (
+              {filteredSalons.map((salon) => (
                 <Link key={salon.id} href={`/salon/${salon.id}`}>
                   <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 bg-white">
                     <CardContent className="p-4">
@@ -419,52 +426,7 @@ export default function Home() {
           )}
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold mb-2">Smart<span className="text-yellow-300">Q</span></h2>
-            <p className="text-gray-400">Skip the wait, book your spot</p>
-          </div>
-          
-          <div className="grid md:grid-cols-3 gap-8 mb-8">
-            <div className="text-center">
-              <h3 className="font-semibold mb-4">For Customers</h3>
-              <ul className="space-y-2 text-gray-400">
-                <li>Join Virtual Queues</li>
-                <li>Real-time Updates</li>
-                <li>Loyalty Rewards</li>
-                <li>Find Nearby Salons</li>
-              </ul>
-            </div>
-            
-            <div className="text-center">
-              <h3 className="font-semibold mb-4">For Salon Owners</h3>
-              <ul className="space-y-2 text-gray-400">
-                <li>Manage Queues</li>
-                <li>Business Analytics</li>
-                <li>Customer Insights</li>
-                <li>Increase Revenue</li>
-              </ul>
-            </div>
-            
-            <div className="text-center">
-              <h3 className="font-semibold mb-4">Support</h3>
-              <ul className="space-y-2 text-gray-400">
-                <li>Help Center</li>
-                <li>Contact Us</li>
-                <li>Privacy Policy</li>
-                <li>Terms of Service</li>
-              </ul>
-            </div>
-          </div>
-          
-          <div className="border-t border-gray-800 pt-8 text-center">
-            <p className="text-gray-400">&copy; 2024 SmartQ. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
+      
     </div>
   );
 }
