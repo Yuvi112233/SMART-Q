@@ -6,6 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Search, MapPin, Star, Users, Clock, Smartphone, Gift, Bell, BarChart3, Handshake, Award, Heart, Scissors, Palette, Sparkles, Zap, Crown, Flame } from "lucide-react";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
+import Autoplay from "embla-carousel-autoplay";
 import { api } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import type { SalonWithDetails } from "../types";
@@ -20,6 +28,33 @@ export default function Home() {
   const [exploreFilter, setExploreFilter] = useState<'highly-rated' | 'nearest'>('highly-rated');
   const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
   const [selectedSalonType, setSelectedSalonType] = useState<'men' | 'women' | 'unisex'>('unisex');
+
+  const plugin = useRef(
+    Autoplay({ delay: 3000, stopOnInteraction: false, stopOnMouseEnter: true })
+  );
+
+  const womenBannerImages = [
+    "https://cdn.dribbble.com/userupload/16515653/file/original-0a3ae9e144f9930637375fe3b579880d.png?resize=752x&vertical=center",
+    "https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&h=400"
+  ];
+
+  const menBannerImages = [
+    "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&h=400",
+    "https://images.unsplash.com/photo-1621605815971-fbc98d665033?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&h=400"
+  ];
+
+  const unisexBannerImages = [
+    "https://images.unsplash.com/photo-1560066984-138dadb4c035?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&h=400",
+    "https://images.unsplash.com/photo-1562322140-8baeececf3df?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&h=400"
+  ];
+
+  const bannerImages = {
+    women: womenBannerImages,
+    men: menBannerImages,
+    unisex: unisexBannerImages,
+  };
+
+  const currentBannerImages = bannerImages[selectedSalonType];
 
   const { data: salons = [], isLoading, error } = useQuery({
     queryKey: ['/api/salons'],
@@ -518,36 +553,35 @@ export default function Home() {
   </div>
 </section>
 
-      {/* Quick Stats & Action Buttons */}
+      {/* Banner Section & Action Buttons */}
       <section className="py-8 px-4">
         <div className="max-w-7xl mx-auto">
-          {/* Stats Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <div className={`${currentTheme.cardBg} backdrop-blur rounded-2xl p-4 text-center shadow-lg border`}>
-              <div className={`text-2xl font-bold ${
-                selectedSalonType === 'men' ? 'text-blue-600' : selectedSalonType === 'women' ? 'text-pink-600' : 'text-purple-600'
-              }`}>{filteredSalons.length}</div>
-              <div className="text-sm text-gray-600">{selectedSalonType.charAt(0).toUpperCase() + selectedSalonType.slice(1)} Salons</div>
-            </div>
-            <div className={`${currentTheme.cardBg} backdrop-blur rounded-2xl p-4 text-center shadow-lg border`}>
-              <div className={`text-2xl font-bold ${
-                selectedSalonType === 'men' ? 'text-slate-600' : selectedSalonType === 'women' ? 'text-rose-600' : 'text-indigo-600'
-              }`}>15min</div>
-              <div className="text-sm text-gray-600">Avg Wait Time</div>
-            </div>
-            <div className={`${currentTheme.cardBg} backdrop-blur rounded-2xl p-4 text-center shadow-lg border`}>
-              <div className={`text-2xl font-bold ${
-                selectedSalonType === 'men' ? 'text-blue-600' : selectedSalonType === 'women' ? 'text-pink-600' : 'text-purple-600'
-              }`}>4.8★</div>
-              <div className="text-sm text-gray-600">Avg Rating</div>
-            </div>
-            <div className={`${currentTheme.cardBg} backdrop-blur rounded-2xl p-4 text-center shadow-lg border`}>
-              <div className={`text-2xl font-bold ${
-                selectedSalonType === 'men' ? 'text-gray-600' : selectedSalonType === 'women' ? 'text-purple-600' : 'text-blue-600'
-              }`}>24/7</div>
-              <div className="text-sm text-gray-600">Available</div>
-            </div>
-          </div>
+          {currentBannerImages && (
+            <Carousel
+              plugins={[plugin.current]}
+              className="w-full max-w-5xl mx-auto mb-8"
+              onMouseEnter={plugin.current.stop}
+              onMouseLeave={plugin.current.reset}
+            >
+              <CarouselContent>
+                {currentBannerImages.map((src, index) => (
+                  <CarouselItem key={index}>
+                    <div className="p-1">
+                      <Card className="overflow-hidden rounded-2xl">
+                        <CardContent className="flex aspect-video items-center justify-center p-0">
+                          <img 
+                            src={src} 
+                            alt={`${selectedSalonType.charAt(0).toUpperCase() + selectedSalonType.slice(1)} Salon Banner ${index + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+            </Carousel>
+          )}
           
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
