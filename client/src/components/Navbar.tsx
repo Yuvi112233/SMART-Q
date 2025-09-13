@@ -15,11 +15,11 @@ export default function Navbar() {
   return (
     <>
       {/* Mobile-First Header */}
-      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-border shadow-sm">
+      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-border shadow-sm hidden md:block">
         <div className="px-4 py-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-end md:justify-between">
             {/* Logo */}
-            <div className="flex items-center space-x-3">
+            <div className="hidden md:flex items-center space-x-3">
               <Link href="/" className="flex items-center space-x-2" data-testid="link-home">
                 <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center shadow-md">
                   <Clock className="h-4 w-4 text-white" />
@@ -44,14 +44,16 @@ export default function Navbar() {
                   </button>
                 </>
               ) : (
-                <Link href="/auth" data-testid="link-auth">
-                  <Button 
-                    className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium px-4 py-2 text-sm rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
-                    data-testid="button-signin"
-                  >
-                    Sign In
-                  </Button>
-                </Link>
+                <div className="hidden md:block">
+                  <Link href="/auth" data-testid="link-auth">
+                    <Button 
+                      className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium px-4 py-2 text-sm rounded-lg shadow-md hover:shadow-lg transition-all duration-200"
+                      data-testid="button-signin"
+                    >
+                      Sign In
+                    </Button>
+                  </Link>
+                </div>
               )}
             </div>
           </div>

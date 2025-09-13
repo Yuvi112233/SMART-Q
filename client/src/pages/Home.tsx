@@ -411,87 +411,73 @@ export default function Home() {
         </section>
       ) : (
         /* Not Logged In - Marketing Hero */
-        <section className="relative overflow-hidden min-h-[70vh] flex items-center">
-          {/* Background Image */}
-          <div className="absolute inset-0">
-            <img 
-              src={currentTheme.heroImage} 
-              alt={`${selectedSalonType.charAt(0).toUpperCase() + selectedSalonType.slice(1)} Salon Interior`}
-              className="w-full h-full object-cover"
-            />
-            <div className={`absolute inset-0 ${
-              selectedSalonType === 'men' 
-                ? 'bg-gradient-to-r from-blue-900/85 via-slate-900/75 to-gray-900/85'
-                : selectedSalonType === 'women'
-                ? 'bg-gradient-to-r from-pink-900/85 via-rose-900/75 to-purple-900/85'
-                : 'bg-gradient-to-r from-purple-900/85 via-indigo-900/75 to-blue-900/85'
-            }`}></div>
-          </div>
-          
-          {/* Decorative Elements */}
-          <div className="absolute inset-0 overflow-hidden">
-            <div className={`absolute top-20 right-10 w-32 h-32 rounded-full blur-xl ${
-              selectedSalonType === 'men' ? 'bg-blue-300/10' : selectedSalonType === 'women' ? 'bg-pink-300/10' : 'bg-purple-300/10'
-            }`}></div>
-            <div className={`absolute bottom-20 left-10 w-24 h-24 rounded-full blur-lg ${
-              selectedSalonType === 'men' ? 'bg-slate-300/10' : selectedSalonType === 'women' ? 'bg-rose-300/10' : 'bg-indigo-300/10'
-            }`}></div>
-            <div className={`absolute top-1/2 left-1/3 w-16 h-16 rounded-full blur-md ${
-              selectedSalonType === 'men' ? 'bg-gray-300/10' : selectedSalonType === 'women' ? 'bg-purple-300/10' : 'bg-blue-300/10'
-            }`}></div>
-          </div>
-          
-          {/* Content */}
-          <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full text-center">
-            <div className="mb-8">
-              <div className="inline-flex items-center bg-white/15 backdrop-blur-md rounded-full px-6 py-3 mb-8 border border-white/20">
-                <Sparkles className="w-5 h-5 text-yellow-300 mr-2" />
-                <span className="text-white font-medium text-sm">Skip the Wait, Join the Queue</span>
-              </div>
-              
-              <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-white leading-tight mb-4 tracking-tight">
-                Smart<span className={`${
-                  selectedSalonType === 'men' ? 'text-blue-300' : selectedSalonType === 'women' ? 'text-pink-300' : 'text-purple-300'
-                }`}>Q</span>
-              </h1>
-              <p className="text-lg md:text-xl text-white/90 mb-8 max-w-2xl mx-auto font-light">
-                {selectedSalonType === 'men' ? 'Men\'s Salon Queue System' : 
-                 selectedSalonType === 'women' ? 'Women\'s Salon Queue System' : 
-                 'Unisex Salon Queue System'}
+        <>
+          <section className="relative overflow-hidden min-h-[60vh] flex items-center justify-center text-center">
+            {/* Background Image with Softer Blur/Overlay */}
+            <div className="absolute inset-0">
+              <img 
+                src={currentTheme.heroImage} 
+                alt={`${selectedSalonType.charAt(0).toUpperCase() + selectedSalonType.slice(1)} Salon Interior`}
+                className="w-full h-full object-cover blur-sm" // Added blur
+              />
+              <div className={`absolute inset-0 ${
+                selectedSalonType === 'men' 
+                  ? 'bg-gradient-to-r from-blue-900/80 via-slate-900/70 to-gray-900/80'
+                  : selectedSalonType === 'women'
+                  ? 'bg-gradient-to-r from-pink-900/80 via-rose-900/70 to-purple-900/80'
+                  : 'bg-gradient-to-r from-purple-900/80 via-indigo-900/70 to-blue-900/80'
+              }`}></div>
+            </div>
+            
+            {/* Content */}
+            <div className="relative z-10 max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+              {/* 1. Tagline */}
+              <p className="text-white/80 font-medium text-sm md:text-base mb-4">
+                Skip the Wait, Join the Queue
               </p>
               
-              <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-10">
+              {/* 2. Main Headline */}
+              <h1 className="text-4xl md:text-6xl font-black text-white leading-tight mb-6 tracking-tighter">
+                SmartQ – Unisex Salon Queue System
+              </h1>
+              
+              {/* 3. CTA Button */}
+              <div className="mb-4">
                 <Link href="/auth">
-                  <Button className={`bg-white hover:bg-gray-100 px-8 py-4 rounded-2xl font-bold text-lg shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:scale-105 ${
+                  <Button size="lg" className={`bg-white hover:bg-gray-200 px-10 py-6 rounded-full font-bold text-lg shadow-2xl hover:shadow-3xl transition-all duration-300 transform hover:scale-105 group ${
                     selectedSalonType === 'men' ? 'text-blue-600' : selectedSalonType === 'women' ? 'text-pink-600' : 'text-purple-600'
                   }`}>
                     Get Started Free
-                    <Zap className="w-5 h-5 ml-2" />
+                    <Sparkles className="w-5 h-5 ml-2 transition-transform duration-300 group-hover:rotate-12" />
                   </Button>
                 </Link>
-                <div className="flex items-center text-white/80 text-sm">
-                  <Users className="w-4 h-4 mr-2" />
-                  <span>Join 10,000+ happy customers</span>
-                </div>
               </div>
               
-              {/* Search Bar for guests */}
-              <div className="max-w-lg mx-auto">
-                <div className="relative">
-                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-                  <Input 
-                    type="text" 
-                    placeholder="Search salons to get started..." 
-                    className="pl-12 pr-4 py-4 text-lg border-0 focus-visible:ring-2 focus-visible:ring-white/50 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    data-testid="input-search"
-                  />
-                </div>
+              {/* 4. Social Proof */}
+              <div className="flex items-center justify-center text-white/70 text-sm">
+                <Users className="w-4 h-4 mr-2" />
+                <span>Join 10,000+ happy customers</span>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
+
+          {/* Search Bar Section - Moved from Hero */}
+          <section className="py-8 px-4 -mt-12 relative z-20">
+  <div className="max-w-lg mx-auto">
+    <div className="relative">
+      <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+      <Input 
+        type="text" 
+        placeholder="Search salons or services..." 
+        className="pl-12 pr-4 py-4 text-lg border-2 border-gray-200 focus-visible:ring-2 focus-visible:ring-purple-400 bg-white rounded-2xl shadow-lg"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        data-testid="input-search"
+      />
+    </div>
+  </div>
+</section>
+        </>
       )}
 
 {/* Salon Type Selector */}
