@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Star, MapPin, Clock, Users, Tag, Heart, Plus, ShoppingCart } from "lucide-react";
+import { Star, MapPin, Clock, Users, Tag, Heart, Plus, ShoppingCart, ChevronLeft, ChevronRight, ImageIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
@@ -18,6 +18,14 @@ import { api } from "../lib/api";
 import { queryClient } from "../lib/queryClient";
 import { insertReviewSchema } from "@shared/schema";
 import type { SalonDetails } from "../types";
+
+interface SalonPhoto {
+  id: string;
+  salonId: string;
+  url: string;
+  publicId: string;
+  createdAt: string;
+}
 
 const reviewFormSchema = insertReviewSchema.omit({ userId: true, salonId: true });
 
@@ -101,9 +109,23 @@ export default function SalonProfile() {
   };
   const { toast } = useToast();
   const [showReviewForm, setShowReviewForm] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const { data: salon, isLoading } = useQuery<SalonDetails>({
     queryKey: ['/api/salons', id],
+    enabled: !!id,
+  });
+
+  // Fetch salon photos
+  const { data: photos = [], isLoading: photosLoading } = useQuery<SalonPhoto[]>({
+    queryKey: ['salon-photos', id],
+    queryFn: async () => {
+      const response = await fetch(`/api/salons/${id}/photos`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch photos');
+      }
+      return response.json();
+    },
     enabled: !!id,
   });
 
@@ -149,6 +171,18 @@ export default function SalonProfile() {
     });
   };
 
+  const nextImage = () => {
+    if (photos.length > 0) {
+      setCurrentImageIndex((prev) => (prev + 1) % photos.length);
+    }
+  };
+
+  const prevImage = () => {
+    if (photos.length > 0) {
+      setCurrentImageIndex((prev) => (prev - 1 + photos.length) % photos.length);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen gradient-pink py-8">
@@ -186,6 +220,60 @@ export default function SalonProfile() {
   return (
     <div className="min-h-screen gradient-pink py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Photo Gallery */}
+        {photos.length > 0 && (
+          <div className="mb-8">
+            <Card className="overflow-hidden">
+              <div className="relative h-64 md:h-80">
+                {photosLoading ? (
+                  <div className="w-full h-full bg-muted animate-pulse flex items-center justify-center">
+                    <ImageIcon className="h-16 w-16 text-muted-foreground" />
+                  </div>
+                ) : (
+                  <>
+                    <img
+                      src={photos[currentImageIndex]?.url}
+                      alt={`${salon.name} - Photo ${currentImageIndex + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    {photos.length > 1 && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white"
+                          onClick={prevImage}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white"
+                          onClick={nextImage}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+                          {photos.map((_, index) => (
+                            <button
+                              key={index}
+                              className={`w-2 h-2 rounded-full ${
+                                index === currentImageIndex ? 'bg-white' : 'bg-white/50'
+                              }`}
+                              onClick={() => setCurrentImageIndex(index)}
+                            />
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
+            </Card>
+          </div>
+        )}
+
         {/* Salon Header - Centered Layout */}
         <div className="mb-8 text-center">
           <div className="flex items-center justify-center space-x-3 mb-3">

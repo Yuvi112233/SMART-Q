@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { z } from 'zod';
+import multer from 'multer';
 
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
@@ -11,14 +12,31 @@ import {
   insertQueueSchema,
   insertOfferSchema,
   insertReviewSchema,
+  insertSalonPhotoSchema,
   loginSchema,
   type Salon,
 } from "@shared/schema";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { uploadImageToCloudinary, deleteImageFromCloudinary } from "./cloudinary";
 
 const JWT_SECRET = process.env.JWT_SECRET || "smartq-secret-key";
 const storage = new MongoStorage();
+
+// Configure multer for file uploads
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  },
+});
 
 // Extend Express Request interface to include user
 declare global {
@@ -206,10 +224,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const salonsWithDetails = await Promise.all(
         salons.map(async (salon) => {
+          console.log('Processing salon with ID:', salon.id);
           const services = await storage.getServicesBySalon(salon.id);
           const queues = await storage.getQueuesBySalon(salon.id);
           const waitingQueues = queues.filter(q => q.status === 'waiting');
           const offers = await storage.getOffersBySalon(salon.id);
+          const photos = await storage.getSalonPhotosBySalon(salon.id);
+          console.log(`Found ${photos.length} photos for salon ${salon.id}`);
 
           return {
             ...salon,
@@ -217,6 +238,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             queueCount: waitingQueues.length,
             estimatedWaitTime: waitingQueues.length * 15,
             offers: offers.filter(o => o.isActive),
+            photos,
           };
         })
       );
@@ -260,19 +282,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/salons', authenticateToken, async (req, res) => {
     try {
-      if (req.user!.role !== 'salon_owner') return res.status(403).json({ message: 'Only salon owners can create salons' });
-
-      const salonData = insertSalonSchema.parse({ ...req.body, ownerId: req.user!.userId });
+      console.log('Salon creation request received');
+      console.log('User role:', req.user!.role);
+      console.log('Request body:', req.body);
+      
       if (req.user!.role !== 'salon_owner') {
+        console.log('Authorization failed - not salon owner');
         return res.status(403).json({ message: 'Only salon owners can create salons' });
       }
+
+      const salonData = insertSalonSchema.parse({ ...req.body, ownerId: req.user!.userId });
+      console.log('Parsed salon data:', salonData);
+      
       const salon = await storage.createSalon(salonData);
+      console.log('Salon created successfully:', salon);
+      
       res.status(201).json(salon);
     } catch (error) {
-      res.status(400).json({ message: 'Invalid salon data', error });
+      console.error('Salon creation error:', error);
+      res.status(400).json({ message: 'Invalid salon data', error: error.message });
     }
   });
 
+
+  app.delete('/api/salons/:id', authenticateToken, async (req, res) => {
+    try {
+      console.log('Salon deletion request for ID:', req.params.id);
+      const salon = await storage.getSalon(req.params.id);
+      if (!salon) {
+        console.log('Salon not found');
+        return res.status(404).json({ message: 'Salon not found' });
+      }
+
+      if (salon.ownerId !== req.user!.userId) {
+        console.log('Authorization failed - not salon owner');
+        return res.status(403).json({ message: 'Not authorized to delete this salon' });
+      }
+
+      // Delete associated photos first
+      const photos = await storage.getSalonPhotosBySalon(req.params.id);
+      for (const photo of photos) {
+        try {
+          await deleteImageFromCloudinary(photo.publicId);
+          await storage.deleteSalonPhoto(photo.id);
+        } catch (error) {
+          console.error('Error deleting photo:', error);
+        }
+      }
+
+      // Delete the salon
+      const deleted = await storage.deleteSalon(req.params.id);
+      if (!deleted) {
+        return res.status(500).json({ message: 'Failed to delete salon' });
+      }
+
+      console.log('Salon deleted successfully');
+      res.json({ message: 'Salon deleted successfully' });
+    } catch (error) {
+      console.error('Salon deletion error:', error);
+      res.status(500).json({ message: 'Server error', error: error.message });
+    }
+  });
 
   app.put('/api/salons/:id', authenticateToken, async (req, res) => {
     try {
@@ -629,6 +699,166 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(analytics);
     } catch (error) {
       res.status(500).json({ message: 'Server error', error });
+    }
+  });
+
+  // ====================
+  // SALON PHOTO ROUTES
+  // ====================
+  
+  // Test endpoint to verify routing
+  app.get('/api/test-photos', (req, res) => {
+    console.log('=== TEST PHOTOS ENDPOINT HIT ===');
+    res.json({ message: 'Photo routes are working', timestamp: new Date().toISOString() });
+  });
+
+  // Test endpoint to verify photo saving with your salon ID
+  app.post('/api/test-photo-save', async (req, res) => {
+    try {
+      console.log('=== TEST PHOTO SAVE ENDPOINT HIT ===');
+      
+      const testPhotoData = {
+        salonId: 'a5562294-9026-46c6-9086-ef1518ad5b39', // Your salon ID
+        url: 'https://test-cloudinary-url.com/test-image.jpg',
+        publicId: 'test-public-id',
+      };
+      
+      console.log('Test photo data:', testPhotoData);
+      
+      // Test schema validation first
+      try {
+        const validatedData = insertSalonPhotoSchema.parse(testPhotoData);
+        console.log('Schema validation successful:', validatedData);
+      } catch (schemaError) {
+        console.error('Schema validation failed:', schemaError);
+        return res.status(400).json({ error: 'Schema validation failed', details: schemaError.message });
+      }
+      
+      const photo = await storage.createSalonPhoto(testPhotoData);
+      console.log('Test photo saved successfully:', photo);
+      
+      // Verify it was saved by fetching it back
+      const savedPhotos = await storage.getSalonPhotosBySalon('a5562294-9026-46c6-9086-ef1518ad5b39');
+      console.log('Photos found for salon after test save:', savedPhotos.length);
+      
+      res.status(201).json({ success: true, photo, totalPhotos: savedPhotos.length });
+    } catch (error) {
+      console.error('Test photo save error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get salon photos
+  app.get('/api/salons/:salonId/photos', async (req, res) => {
+    try {
+      console.log('=== GET PHOTOS ENDPOINT HIT ===', req.params.salonId);
+      const photos = await storage.getSalonPhotosBySalon(req.params.salonId);
+      res.json(photos);
+    } catch (error) {
+      res.status(500).json({ message: 'Server error', error });
+    }
+  });
+
+  // Upload salon photo
+  app.post('/api/salons/:salonId/photos', authenticateToken, upload.single('image'), async (req, res) => {
+    try {
+      console.log('=== PHOTO UPLOAD ENDPOINT HIT ===');
+      console.log('Photo upload request received for salon:', req.params.salonId);
+      console.log('File received:', !!req.file);
+      console.log('User ID:', req.user?.userId);
+      
+      if (!req.file) {
+        console.log('No file provided in request');
+        return res.status(400).json({ message: 'No image file provided' });
+      }
+
+      // Verify salon ownership
+      const salon = await storage.getSalon(req.params.salonId);
+      console.log('Salon found:', !!salon);
+      console.log('Salon owner ID:', salon?.ownerId);
+      
+      if (!salon || salon.ownerId !== req.user!.userId) {
+        console.log('Authorization failed - salon owner mismatch');
+        return res.status(403).json({ message: 'Not authorized to upload photos for this salon' });
+      }
+
+      console.log('Uploading to Cloudinary...');
+      // Upload to Cloudinary
+      const { url, publicId } = await uploadImageToCloudinary(req.file.buffer, 'salon_photos');
+      console.log('Cloudinary upload successful:', { url, publicId });
+
+      // Save to database
+      console.log('Preparing photo data for database save...');
+      
+      // Create photo data without schema validation first to test
+      const photoData = {
+        salonId: req.params.salonId,
+        url,
+        publicId,
+      };
+      console.log('Photo data to save:', photoData);
+      
+      // Validate with schema
+      try {
+        const validatedData = insertSalonPhotoSchema.parse(photoData);
+        console.log('Schema validation successful:', validatedData);
+      } catch (schemaError) {
+        console.error('Schema validation failed:', schemaError);
+        throw new Error(`Schema validation failed: ${schemaError.message}`);
+      }
+
+      console.log('Calling storage.createSalonPhoto...');
+      const photo = await storage.createSalonPhoto(photoData);
+      console.log('Photo saved to database successfully:', photo);
+      
+      // Verify the photo was saved by fetching it back
+      console.log('Verifying photo was saved...');
+      const savedPhotos = await storage.getSalonPhotosBySalon(req.params.salonId);
+      console.log('Photos found for salon after save:', savedPhotos.length);
+      
+      res.status(201).json(photo);
+    } catch (error) {
+      console.error('Photo upload error:', error);
+      res.status(400).json({ message: 'Failed to upload photo', error: error.message });
+    }
+  });
+
+  // Delete salon photo
+  app.delete('/api/salons/:salonId/photos/:photoId', authenticateToken, async (req, res) => {
+    try {
+      const { salonId, photoId } = req.params;
+
+      // Verify salon ownership
+      const salon = await storage.getSalon(salonId);
+      if (!salon || salon.ownerId !== req.user!.userId) {
+        return res.status(403).json({ message: 'Not authorized to delete photos for this salon' });
+      }
+
+      // Check if this is the last photo (must keep at least one)
+      const photoCount = await storage.getSalonPhotoCount(salonId);
+      if (photoCount <= 1) {
+        return res.status(400).json({ message: 'Cannot delete the last photo. At least one photo is required.' });
+      }
+
+      // Get photo details for Cloudinary deletion
+      const photo = await storage.getSalonPhoto(photoId);
+      if (!photo) {
+        return res.status(404).json({ message: 'Photo not found' });
+      }
+
+      // Delete from Cloudinary
+      await deleteImageFromCloudinary(photo.publicId);
+
+      // Delete from database
+      const deleted = await storage.deleteSalonPhoto(photoId);
+      if (!deleted) {
+        return res.status(404).json({ message: 'Photo not found' });
+      }
+
+      res.json({ message: 'Photo deleted successfully' });
+    } catch (error) {
+      console.error('Photo deletion error:', error);
+      res.status(500).json({ message: 'Failed to delete photo', error });
     }
   });
 

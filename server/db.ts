@@ -89,6 +89,14 @@ const reviewSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
+const salonPhotoSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  salonId: { type: String, required: true },
+  url: { type: String, required: true },
+  publicId: { type: String, required: true }, // Cloudinary public_id for deletion
+  createdAt: { type: Date, default: Date.now }
+});
+
 // Create models
 export const UserModel = mongoose.model('User', userSchema);
 export const SalonModel = mongoose.model('Salon', salonSchema);
@@ -96,3 +104,4 @@ export const ServiceModel = mongoose.model('Service', serviceSchema);
 export const QueueModel = mongoose.model('Queue', queueSchema);
 export const OfferModel = mongoose.model('Offer', offerSchema);
 export const ReviewModel = mongoose.model('Review', reviewSchema);
+export const SalonPhotoModel = mongoose.model('SalonPhoto', salonPhotoSchema);

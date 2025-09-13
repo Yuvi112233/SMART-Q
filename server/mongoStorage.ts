@@ -13,9 +13,11 @@ import {
   type InsertOffer,
   type Review,
   type InsertReview,
+  type SalonPhoto,
+  type InsertSalonPhoto,
 } from "@shared/schema";
 import { IStorage } from "./storage";
-import { UserModel, SalonModel, ServiceModel, QueueModel, OfferModel, ReviewModel } from "./db";
+import { UserModel, SalonModel, ServiceModel, QueueModel, OfferModel, ReviewModel, SalonPhotoModel } from "./db";
 
 export class MongoStorage implements IStorage {
   // Users
@@ -369,5 +371,37 @@ export class MongoStorage implements IStorage {
     }
     
     return false;
+  }
+
+  // Salon Photos
+  async getSalonPhoto(id: string): Promise<SalonPhoto | undefined> {
+    const photo = await SalonPhotoModel.findOne({ id }).lean();
+    return photo ? photo as unknown as SalonPhoto : undefined;
+  }
+
+  async getSalonPhotosBySalon(salonId: string): Promise<SalonPhoto[]> {
+    const photos = await SalonPhotoModel.find({ salonId }).sort({ createdAt: 1 }).lean();
+    return photos as unknown as SalonPhoto[];
+  }
+
+  async createSalonPhoto(photo: InsertSalonPhoto): Promise<SalonPhoto> {
+    const id = randomUUID();
+    const newPhoto: SalonPhoto = {
+      ...photo,
+      id,
+      createdAt: new Date(),
+    };
+    
+    await SalonPhotoModel.create(newPhoto);
+    return newPhoto;
+  }
+
+  async deleteSalonPhoto(id: string): Promise<boolean> {
+    const result = await SalonPhotoModel.deleteOne({ id });
+    return result.deletedCount > 0;
+  }
+
+  async getSalonPhotoCount(salonId: string): Promise<number> {
+    return await SalonPhotoModel.countDocuments({ salonId });
   }
 }

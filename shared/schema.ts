@@ -163,3 +163,20 @@ export type Offer = {
   createdAt: Date;
 };
 export type Review = typeof reviews.$inferSelect;
+
+// ---------------- SALON PHOTOS ----------------
+export const salonPhotos = pgTable("salon_photos", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  salonId: varchar("salon_id").notNull().references(() => salons.id, { onDelete: "cascade" }),
+  url: varchar("url").notNull(),
+  publicId: varchar("public_id").notNull(), // Cloudinary public_id for deletion
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+});
+
+export const insertSalonPhotoSchema = createInsertSchema(salonPhotos).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertSalonPhoto = z.infer<typeof insertSalonPhotoSchema>;
+export type SalonPhoto = typeof salonPhotos.$inferSelect;

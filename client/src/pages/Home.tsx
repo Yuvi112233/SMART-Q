@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Search, MapPin, Star, Users, Clock, Smartphone, Gift, Bell, BarChart3, Handshake, Award, Heart, Scissors, Palette, Sparkles, Zap, Crown, Flame } from "lucide-react";
+import { Search, MapPin, Star, Users, Clock, Smartphone, Gift, Bell, BarChart3, Handshake, Award, Heart, Scissors, Palette, Sparkles, Zap, Crown, Flame, ImageIcon } from "lucide-react";
 import {
   Carousel,
   CarouselContent,
@@ -16,7 +16,7 @@ import {
 import Autoplay from "embla-carousel-autoplay";
 import { api } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
-import type { SalonWithDetails } from "../types";
+import type { SalonWithDetails, SalonPhoto } from "../types";
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -56,9 +56,37 @@ export default function Home() {
 
   const currentBannerImages = bannerImages[selectedSalonType];
 
-  const { data: salons = [], isLoading, error } = useQuery({
+  const { data: salons = [], isLoading, error } = useQuery<SalonWithDetails[]>({
     queryKey: ['/api/salons'],
+    queryFn: () => api.salons.getAll(),
   });
+
+  // Debug log to see what data we're getting
+  console.log('Salons data from API:', salons);
+
+  // Create a component for salon photo thumbnail
+  const SalonPhotoThumbnail = ({ photos, salonName }: { photos: SalonPhoto[]; salonName: string }) => {
+    console.log('SalonPhotoThumbnail - Salon:', salonName, 'Photos:', photos);
+    
+    if (photos && photos.length > 0) {
+      console.log('Using uploaded photo:', photos[0].url);
+      return (
+        <img 
+          src={photos[0].url} 
+          alt={salonName}
+          className="w-20 h-20 object-cover rounded-lg"
+        />
+      );
+    }
+
+    console.log('Using fallback placeholder for salon:', salonName);
+    // Fallback placeholder
+    return (
+      <div className="w-20 h-20 bg-muted rounded-lg flex items-center justify-center">
+        <ImageIcon className="h-8 w-8 text-muted-foreground" />
+      </div>
+    );
+  };
 
   if (error) {
     console.error('Error loading salons:', error);
@@ -650,11 +678,17 @@ export default function Home() {
                       <Link key={salon.id} href={`/salon/${salon.id}`}>
                         <Card className="min-w-[320px] overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:scale-105 bg-white/90 backdrop-blur border-0">
                           <div className="relative">
-                            <img 
-                              src="https://images.unsplash.com/photo-1560066984-138dadb4c035?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=200" 
-                              alt={salon.name}
-                              className="w-full h-40 object-cover"
-                            />
+                            {salon.photos && salon.photos.length > 0 ? (
+                              <img 
+                                src={salon.photos[0].url} 
+                                alt={salon.name}
+                                className="w-full h-40 object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-40 bg-muted flex items-center justify-center">
+                                <ImageIcon className="h-12 w-12 text-muted-foreground" />
+                              </div>
+                            )}
                             <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
                             {salon.offers && salon.offers.length > 0 && (
                               <div className="absolute top-3 right-3 bg-gradient-to-r from-red-500 to-pink-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg">
@@ -738,11 +772,17 @@ export default function Home() {
                         <Link key={salon.id} href={`/salon/${salon.id}`}>
                           <Card className="min-w-[280px] overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300">
                             <div className="relative">
-                              <img 
-                                src="https://images.unsplash.com/photo-1560066984-138dadb4c035?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=200" 
-                                alt={salon.name}
-                                className="w-full h-32 object-cover"
-                              />
+                              {salon.photos && salon.photos.length > 0 ? (
+                                <img 
+                                  src={salon.photos[0].url} 
+                                  alt={salon.name}
+                                  className="w-full h-32 object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-32 bg-muted flex items-center justify-center">
+                                  <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                                </div>
+                              )}
                               {salon.offers && salon.offers.length > 0 && (
                                 <Badge className="absolute top-2 right-2 bg-red-500 text-white">
                                   {Math.max(...salon.offers.map(offer => offer.discount))}% OFF
@@ -772,11 +812,17 @@ export default function Home() {
                           <Link key={salon.id} href={`/salon/${salon.id}`}>
                             <Card className="min-w-[280px] overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300">
                               <div className="relative">
-                                <img 
-                                  src="https://images.unsplash.com/photo-1560066984-138dadb4c035?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=200" 
-                                  alt={salon.name}
-                                  className="w-full h-32 object-cover"
-                                />
+                                {salon.photos && salon.photos.length > 0 ? (
+                                  <img 
+                                    src={salon.photos[0].url} 
+                                    alt={salon.name}
+                                    className="w-full h-32 object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-full h-32 bg-muted flex items-center justify-center">
+                                    <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                                  </div>
+                                )}
                                 {salon.offers && salon.offers.length > 0 && (
                                   <Badge className="absolute top-2 right-2 bg-red-500 text-white">
                                     {Math.max(...salon.offers.map(offer => offer.discount))}% OFF
@@ -857,11 +903,19 @@ export default function Home() {
               <Link key={salon.id} href={`/salon/${salon.id}`}>
                 <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300">
                   <div className="relative">
-                    <img 
-                      src="https://images.unsplash.com/photo-1560066984-138dadb4c035?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=200" 
-                      alt={salon.name}
-                      className="w-full h-32 object-cover"
-                    />
+                    {salon.photos && salon.photos.length > 0 ? (
+                      <img 
+                        src={salon.photos[0].url} 
+                        alt={salon.name}
+                        className="w-full h-32 object-cover"
+                      />
+                    ) : (
+                      <img 
+                        src="https://images.unsplash.com/photo-1560066984-138dadb4c035?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=200" 
+                        alt={salon.name}
+                        className="w-full h-32 object-cover"
+                      />
+                    )}
                     {salon.offers && salon.offers.length > 0 && (
                       <Badge className="absolute top-2 right-2 bg-red-500 text-white">
                         {Math.max(...salon.offers.map(offer => offer.discount))}% OFF
@@ -968,11 +1022,7 @@ export default function Home() {
                   <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 bg-white">
                     <CardContent className="p-4">
                       <div className="flex gap-4">
-                        <img 
-                          src="https://images.unsplash.com/photo-1560066984-138dadb4c035?ixlib=rb-4.0.3&auto=format&fit=crop&w=100&h=100" 
-                          alt={salon.name}
-                          className="w-20 h-20 object-cover rounded-lg"
-                        />
+                        <SalonPhotoThumbnail photos={salon.photos} salonName={salon.name} />
                         <div className="flex-1">
                           <div className="flex items-start justify-between mb-2">
                             <div>

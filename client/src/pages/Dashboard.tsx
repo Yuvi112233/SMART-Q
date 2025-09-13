@@ -32,6 +32,7 @@ import { api } from "../lib/api";
 import { queryClient } from "../lib/queryClient";
 import { insertSalonSchema, insertServiceSchema, insertOfferSchema } from "@shared/schema";
 import type { QueueWithDetails, Analytics } from "../types";
+import GalleryManager from "../components/GalleryManager";
 
 const serviceFormSchema = insertServiceSchema.omit({ salonId: true });
 const offerFormSchema = insertOfferSchema.omit({ salonId: true });
@@ -114,6 +115,8 @@ export default function Dashboard() {
     },
   });
 
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
+
   const serviceForm = useForm<ServiceForm>({
     resolver: zodResolver(serviceFormSchema),
     defaultValues: {
@@ -137,19 +140,128 @@ export default function Dashboard() {
 
   // Mutations
   const createSalonMutation = useMutation({
-    mutationFn: api.salons.create,
-    onSuccess: () => {
+    mutationFn: async (data: any) => {
+      let createdSalon = null;
+      
+      try {
+        // First create the salon
+        createdSalon = await api.salons.create(data);
+        console.log('Salon created:', createdSalon);
+        
+        // Then upload images if any are selected
+        if (selectedImages.length > 0) {
+          console.log('=== STARTING IMAGE UPLOAD PROCESS ===');
+          console.log('Number of images to upload:', selectedImages.length);
+          console.log('Created salon ID:', createdSalon.id);
+          
+          for (let i = 0; i < selectedImages.length; i++) {
+            const image = selectedImages[i];
+            console.log(`Uploading image ${i + 1}/${selectedImages.length}:`, image.name);
+            
+            const formData = new FormData();
+            formData.append('image', image);
+            
+            const token = localStorage.getItem('smartq_token');
+            const uploadUrl = `/api/salons/${createdSalon.id}/photos`;
+            console.log('Upload URL:', uploadUrl);
+            console.log('Token exists:', !!token);
+            
+            try {
+              const response = await fetch(uploadUrl, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                },
+                body: formData,
+              });
+              
+              console.log('Upload response status:', response.status);
+              console.log('Upload response headers:', Object.fromEntries(response.headers.entries()));
+              
+              if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Image upload failed:', response.status, errorText);
+                
+                // If image upload fails, delete the created salon
+                if (createdSalon) {
+                  try {
+                    await fetch(`/api/salons/${createdSalon.id}`, {
+                      method: 'DELETE',
+                      headers: {
+                        'Authorization': `Bearer ${token}`,
+                      },
+                    });
+                    console.log('Salon deleted due to image upload failure');
+                  } catch (deleteError) {
+                    console.error('Failed to delete salon after image upload failure:', deleteError);
+                  }
+                }
+                
+                throw new Error(`Failed to upload image: ${response.status} ${errorText}`);
+              }
+              
+              const result = await response.json();
+              console.log('Image uploaded successfully:', result);
+            } catch (fetchError) {
+              console.error('Fetch error during image upload:', fetchError);
+              throw fetchError;
+            }
+          }
+          
+          console.log('=== IMAGE UPLOAD PROCESS COMPLETED ===');
+        } else {
+          // If no images selected but required, delete the salon
+          if (createdSalon) {
+            const token = localStorage.getItem('smartq_token');
+            try {
+              await fetch(`/api/salons/${createdSalon.id}`, {
+                method: 'DELETE',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                },
+              });
+            } catch (deleteError) {
+              console.error('Failed to delete salon:', deleteError);
+            }
+          }
+          throw new Error('At least one image is required');
+        }
+        
+        return createdSalon;
+      } catch (error) {
+        // If any error occurs and salon was created, try to delete it
+        if (createdSalon) {
+          const token = localStorage.getItem('smartq_token');
+          try {
+            await fetch(`/api/salons/${createdSalon.id}`, {
+              method: 'DELETE',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+              },
+            });
+          } catch (deleteError) {
+            console.error('Failed to delete salon after error:', deleteError);
+          }
+        }
+        
+        console.error('Salon creation error:', error);
+        throw error;
+      }
+    },
+    onSuccess: (createdSalon) => {
       toast({
-        title: "Salon created successfully!",
-        description: "Your salon has been added to SmartQ.",
+        title: "Success",
+        description: "Salon created successfully!",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/salons'] });
       salonForm.reset();
+      setSelectedImages([]);
     },
     onError: (error) => {
+      console.error('Salon creation error:', error);
       toast({
-        title: "Failed to create salon",
-        description: error.message,
+        title: "Error",
+        description: error.message || "Failed to create salon",
         variant: "destructive",
       });
     },
@@ -435,10 +547,58 @@ export default function Dashboard() {
                         </FormItem>
                       )}
                     />
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">
+                        Salon Photos <span className="text-red-500">*</span>
+                      </label>
+                      <div className="border-2 border-dashed border-border rounded-lg p-4">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={(e) => {
+                            const files = Array.from(e.target.files || []);
+                            setSelectedImages(files);
+                          }}
+                          className="w-full"
+                          data-testid="input-salon-images"
+                        />
+                        <p className="text-sm text-muted-foreground mt-2">
+                          Select at least one photo of your salon. You can add more later.
+                        </p>
+                        {selectedImages.length > 0 && (
+                          <div className="mt-3">
+                            <p className="text-sm font-medium text-foreground">
+                              Selected: {selectedImages.length} image{selectedImages.length !== 1 ? 's' : ''}
+                            </p>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {selectedImages.map((file, index) => (
+                                <div key={index} className="relative">
+                                  <img
+                                    src={URL.createObjectURL(file)}
+                                    alt={`Preview ${index + 1}`}
+                                    className="w-16 h-16 object-cover rounded border"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedImages(prev => prev.filter((_, i) => i !== index));
+                                    }}
+                                    className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                     <Button 
                       type="submit" 
                       className="w-full" 
-                      disabled={createSalonMutation.isPending}
+                      disabled={createSalonMutation.isPending || selectedImages.length === 0}
                       data-testid="button-submit-salon"
                     >
                       {createSalonMutation.isPending ? "Creating..." : "Create Salon"}
@@ -544,10 +704,11 @@ export default function Dashboard() {
 
                 {/* Main Content */}
                 <Tabs defaultValue="queue" className="space-y-6">
-                  <TabsList className="grid w-full grid-cols-4">
+                  <TabsList className="grid w-full grid-cols-5">
                     <TabsTrigger value="queue" data-testid="tab-queue">Current Queue</TabsTrigger>
                     <TabsTrigger value="services" data-testid="tab-services">Services</TabsTrigger>
                     <TabsTrigger value="offers" data-testid="tab-offers">Offers</TabsTrigger>
+                    <TabsTrigger value="gallery" data-testid="tab-gallery">Gallery</TabsTrigger>
                     <TabsTrigger value="analytics" data-testid="tab-analytics">Analytics</TabsTrigger>
                   </TabsList>
 
@@ -991,6 +1152,11 @@ export default function Dashboard() {
                         )}
                       </CardContent>
                     </Card>
+                  </TabsContent>
+
+                  {/* Gallery Management */}
+                  <TabsContent value="gallery" className="space-y-6">
+                    <GalleryManager salonId={selectedSalonId} />
                   </TabsContent>
 
                   {/* Analytics */}

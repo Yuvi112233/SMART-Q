@@ -1,10 +1,19 @@
 import type { User, Salon, Service, Queue, Offer, Review } from "@shared/schema";
 
+export interface SalonPhoto {
+  id: string;
+  salonId: string;
+  url: string;
+  publicId: string;
+  createdAt: string;
+}
+
 export interface SalonWithDetails extends Salon {
   services: Service[];
   queueCount: number;
   estimatedWaitTime: number;
   offers: Offer[];
+  photos: SalonPhoto[];
 }
 
 export interface SalonDetails extends Salon {
