@@ -14,6 +14,9 @@ export interface SalonWithDetails extends Salon {
   estimatedWaitTime: number;
   offers: Offer[];
   photos: SalonPhoto[];
+  latitude?: number;
+  longitude?: number;
+  fullAddress?: string;
 }
 
 export interface SalonDetails extends Salon {
@@ -22,6 +25,9 @@ export interface SalonDetails extends Salon {
   reviews: Review[];
   queueCount: number;
   estimatedWaitTime: number;
+  latitude?: number;
+  longitude?: number;
+  fullAddress?: string;
 }
 
 export interface QueueWithDetails extends Queue {

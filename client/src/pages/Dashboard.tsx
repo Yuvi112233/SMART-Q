@@ -33,6 +33,7 @@ import { queryClient } from "../lib/queryClient";
 import { insertSalonSchema, insertServiceSchema, insertOfferSchema } from "@shared/schema";
 import type { QueueWithDetails, Analytics } from "../types";
 import GalleryManager from "../components/GalleryManager";
+import LocationPicker from "../components/LocationPicker";
 
 const serviceFormSchema = insertServiceSchema.omit({ salonId: true });
 const offerFormSchema = insertOfferSchema.omit({ salonId: true });
@@ -46,6 +47,11 @@ export default function Dashboard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [selectedSalonId, setSelectedSalonId] = useState<string>("");
+  const [selectedLocation, setSelectedLocation] = useState<{
+    latitude: number;
+    longitude: number;
+    address: string;
+  } | null>(null);
 
   // Get user's salons
   const { data: salons = [], isLoading: salonsLoading } = useQuery({
@@ -369,10 +375,15 @@ export default function Dashboard() {
   });
 
   const onSalonSubmit = (data: SalonForm) => {
-    createSalonMutation.mutate({
+    const salonData = {
       ...data,
-      ownerId: user!.id,
-    });
+      location: selectedLocation?.address || data.location || "",
+      ownerId: user.id,
+      latitude: selectedLocation?.latitude,
+      longitude: selectedLocation?.longitude,
+      fullAddress: selectedLocation?.address,
+    };
+    createSalonMutation.mutate(salonData);
   };
 
   const onServiceSubmit = (data: ServiceForm) => {
@@ -458,10 +469,10 @@ export default function Dashboard() {
     <div className="min-h-screen gradient-pink py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Salon Dashboard</h1>
-            <p className="text-muted-foreground">Manage your salons and track performance</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Salon Dashboard</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">Manage your salons and track performance</p>
           </div>
           
           {salons.length === 0 && (
@@ -472,7 +483,7 @@ export default function Dashboard() {
                   Create Salon
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="sm:max-w-md max-w-[95vw] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Create New Salon</DialogTitle>
                   <DialogDescription>
@@ -480,7 +491,7 @@ export default function Dashboard() {
                   </DialogDescription>
                 </DialogHeader>
                 <Form {...salonForm}>
-                  <form onSubmit={salonForm.handleSubmit(onSalonSubmit)} className="space-y-4">
+                  <form onSubmit={salonForm.handleSubmit(onSalonSubmit)} className="space-y-3">
                     <FormField
                       control={salonForm.control}
                       name="name"
@@ -489,19 +500,6 @@ export default function Dashboard() {
                           <FormLabel>Salon Name</FormLabel>
                           <FormControl>
                             <Input placeholder="Enter salon name" {...field} data-testid="input-salon-name" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={salonForm.control}
-                      name="location"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Location</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Enter salon location" {...field} data-testid="input-salon-location" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -547,11 +545,16 @@ export default function Dashboard() {
                         </FormItem>
                       )}
                     />
+                    {/* Location Picker */}
+                    <LocationPicker 
+                      onLocationSelect={setSelectedLocation}
+                      initialLocation={selectedLocation}
+                    />
                     <div className="space-y-2">
                       <label className="text-sm font-medium">
                         Salon Photos <span className="text-red-500">*</span>
                       </label>
-                      <div className="border-2 border-dashed border-border rounded-lg p-4">
+                      <div className="border-2 border-dashed border-border rounded-lg p-3">
                         <input
                           type="file"
                           accept="image/*"
@@ -560,31 +563,31 @@ export default function Dashboard() {
                             const files = Array.from(e.target.files || []);
                             setSelectedImages(files);
                           }}
-                          className="w-full"
+                          className="w-full text-sm"
                           data-testid="input-salon-images"
                         />
-                        <p className="text-sm text-muted-foreground mt-2">
-                          Select at least one photo of your salon. You can add more later.
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Select at least one photo. You can add more later.
                         </p>
                         {selectedImages.length > 0 && (
-                          <div className="mt-3">
-                            <p className="text-sm font-medium text-foreground">
+                          <div className="mt-2">
+                            <p className="text-xs font-medium text-foreground">
                               Selected: {selectedImages.length} image{selectedImages.length !== 1 ? 's' : ''}
                             </p>
-                            <div className="flex flex-wrap gap-2 mt-2">
+                            <div className="flex flex-wrap gap-1 mt-1">
                               {selectedImages.map((file, index) => (
                                 <div key={index} className="relative">
                                   <img
                                     src={URL.createObjectURL(file)}
                                     alt={`Preview ${index + 1}`}
-                                    className="w-16 h-16 object-cover rounded border"
+                                    className="w-12 h-12 object-cover rounded border"
                                   />
                                   <button
                                     type="button"
                                     onClick={() => {
                                       setSelectedImages(prev => prev.filter((_, i) => i !== index));
                                     }}
-                                    className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                                    className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs"
                                   >
                                     ×
                                   </button>

@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MapPin, Clock, Star, AlertCircle } from "lucide-react";
+import { MapPin, Clock, Star, AlertCircle, Navigation } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "../context/AuthContext";
 import { useWebSocket } from "../context/WebSocketContext";
@@ -39,6 +39,29 @@ export default function Queue() {
       });
     },
   });
+
+  // Open Google Maps with salon location
+  const openDirections = (salon: any) => {
+    console.log('Opening directions for salon:', {
+      latitude: salon.latitude,
+      longitude: salon.longitude,
+      fullAddress: salon.fullAddress,
+      location: salon.location
+    });
+    
+    if (salon.latitude && salon.longitude) {
+      // Use exact coordinates for precise navigation
+      const url = `https://www.google.com/maps/dir/?api=1&destination=${salon.latitude},${salon.longitude}&travelmode=driving`;
+      console.log('Using coordinates URL:', url);
+      window.open(url, '_blank');
+    } else {
+      // Fallback to address search
+      const query = encodeURIComponent(salon.fullAddress || salon.location);
+      const url = `https://www.google.com/maps/dir/?api=1&destination=${query}&travelmode=driving`;
+      console.log('Using address URL:', url);
+      window.open(url, '_blank');
+    }
+  };
 
   if (!user) {
     return (
@@ -227,8 +250,10 @@ export default function Queue() {
                               <Button 
                                 variant="outline" 
                                 className="flex-1"
+                                onClick={() => openDirections(queue.salon)}
                                 data-testid={`button-directions-${queue.id}`}
                               >
+                                <Navigation className="h-4 w-4 mr-2" />
                                 Get Directions
                               </Button>
                               <Button 

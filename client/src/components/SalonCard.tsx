@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Star, MapPin, Clock, ImageIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Star, MapPin, Clock, ImageIcon, Navigation } from "lucide-react";
 import type { SalonWithDetails } from "../types";
 
 interface SalonCardProps {
@@ -37,6 +38,33 @@ export default function SalonCard({ salon, showWaitTime = true, showDistance = f
 
   const hasMultipleImages = salon.photos && salon.photos.length > 1;
 
+  const openInGoogleMaps = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    console.log('SalonCard - Opening maps for salon:', {
+      id: salon.id,
+      name: salon.name,
+      latitude: salon.latitude,
+      longitude: salon.longitude,
+      fullAddress: salon.fullAddress,
+      location: salon.location
+    });
+    
+    if (salon.latitude && salon.longitude) {
+      // Use exact coordinates for precise location
+      const url = `https://www.google.com/maps?q=${salon.latitude},${salon.longitude}`;
+      console.log('SalonCard - Using coordinates URL:', url);
+      window.open(url, '_blank');
+    } else {
+      // Fallback to address search
+      const query = encodeURIComponent(salon.fullAddress || salon.location);
+      const url = `https://www.google.com/maps/search/${query}`;
+      console.log('SalonCard - Using address URL:', url);
+      window.open(url, '_blank');
+    }
+  };
+
   return (
     <Link href={`/salon/${salon.id}`}>
       <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300">
@@ -47,6 +75,16 @@ export default function SalonCard({ salon, showWaitTime = true, showDistance = f
             className="w-full h-32 object-cover transition-opacity duration-500"
           />
           
+          {/* Location icon for Google Maps */}
+          <Button
+            size="sm"
+            variant="secondary"
+            className="absolute bottom-2 right-2 h-8 w-8 p-0 bg-white/90 hover:bg-white"
+            onClick={openInGoogleMaps}
+            title="Open in Google Maps"
+          >
+            <Navigation className="h-4 w-4" />
+          </Button>
 
           {/* Offers badge */}
           {salon.offers && salon.offers.length > 0 && (
