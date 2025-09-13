@@ -494,45 +494,43 @@ export default function Home() {
         </section>
       )}
 
-      {/* Salon Type Selector */}
-      <section className="py-6 px-4 bg-white/80 backdrop-blur-sm border-b border-gray-100">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-center">
-            <div className="inline-flex bg-gray-100 rounded-2xl p-1 shadow-inner">
-              <button
-                onClick={() => setSelectedSalonType('men')}
-                className={`px-6 py-3 rounded-xl font-semibold text-sm transition-all duration-300 ${
-                  selectedSalonType === 'men'
-                    ? 'bg-blue-500 text-white shadow-lg transform scale-105'
-                    : 'text-gray-600 hover:text-blue-500 hover:bg-white/50'
-                }`}
-              >
-                👨 Men's Salons
-              </button>
-              <button
-                onClick={() => setSelectedSalonType('women')}
-                className={`px-6 py-3 rounded-xl font-semibold text-sm transition-all duration-300 ${
-                  selectedSalonType === 'women'
-                    ? 'bg-pink-500 text-white shadow-lg transform scale-105'
-                    : 'text-gray-600 hover:text-pink-500 hover:bg-white/50'
-                }`}
-              >
-                👩 Women's Salons
-              </button>
-              <button
-                onClick={() => setSelectedSalonType('unisex')}
-                className={`px-6 py-3 rounded-xl font-semibold text-sm transition-all duration-300 ${
-                  selectedSalonType === 'unisex'
-                    ? 'bg-purple-500 text-white shadow-lg transform scale-105'
-                    : 'text-gray-600 hover:text-purple-500 hover:bg-white/50'
-                }`}
-              >
-                👫 Unisex Salons
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
+{/* Salon Type Selector */}
+<section className="py-4 px-4 bg-white border-b border-gray-200">
+  <div className="max-w-md mx-auto">
+    <div className="flex gap-2">
+      <button
+        onClick={() => setSelectedSalonType('men')}
+        className={`flex-1 px-4 py-3 text-sm font-medium rounded-lg border shadow-sm transition-colors ${
+          selectedSalonType === 'men'
+            ? 'bg-blue-600 text-white border-blue-600'
+            : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-200'
+        }`}
+      >
+        Men
+      </button>
+      <button
+        onClick={() => setSelectedSalonType('women')}
+        className={`flex-1 px-4 py-3 text-sm font-medium rounded-lg border shadow-sm transition-colors ${
+          selectedSalonType === 'women'
+            ? 'bg-pink-600 text-white border-pink-600'
+            : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-200'
+        }`}
+      >
+        Women
+      </button>
+      <button
+        onClick={() => setSelectedSalonType('unisex')}
+        className={`flex-1 px-4 py-3 text-sm font-medium rounded-lg border shadow-sm transition-colors ${
+          selectedSalonType === 'unisex'
+            ? 'bg-purple-600 text-white border-purple-600'
+            : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-200'
+        }`}
+      >
+        Unisex
+      </button>
+    </div>
+  </div>
+</section>
 
       {/* Quick Stats & Action Buttons */}
       <section className="py-8 px-4">
