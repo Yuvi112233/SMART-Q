@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Search, MapPin, Star, Users, Clock, Smartphone, Gift, Bell, BarChart3, Handshake, Award, Heart, Scissors, Palette, Sparkles, Zap, Crown, Flame, ImageIcon } from "lucide-react";
+import SalonCard from "../components/SalonCard";
 import {
   Carousel,
   CarouselContent,
@@ -675,69 +676,9 @@ export default function Home() {
                 favoriteSalons.length > 0 ? (
                   <div className="flex gap-4">
                     {favoriteSalons.map((salon) => (
-                      <Link key={salon.id} href={`/salon/${salon.id}`}>
-                        <Card className="min-w-[320px] overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:scale-105 bg-white/90 backdrop-blur border-0">
-                          <div className="relative">
-                            {salon.photos && salon.photos.length > 0 ? (
-                              <img 
-                                src={salon.photos[0].url} 
-                                alt={salon.name}
-                                className="w-full h-40 object-cover"
-                              />
-                            ) : (
-                              <div className="w-full h-40 bg-muted flex items-center justify-center">
-                                <ImageIcon className="h-12 w-12 text-muted-foreground" />
-                              </div>
-                            )}
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-                            {salon.offers && salon.offers.length > 0 && (
-                              <div className="absolute top-3 right-3 bg-gradient-to-r from-red-500 to-pink-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg">
-                                🎉 {Math.max(...salon.offers.map(offer => offer.discount))}% OFF
-                              </div>
-                            )}
-                            <div className="absolute bottom-3 left-3 right-3">
-                              <h3 className="font-bold text-white text-lg mb-1">{salon.name}</h3>
-                              <p className="text-white/90 text-sm flex items-center">
-                                <MapPin className="w-3 h-3 mr-1" />
-                                {salon.location}
-                              </p>
-                            </div>
-                          </div>
-                          <CardContent className="p-4">
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="flex items-center space-x-3">
-                                <div className="flex items-center bg-yellow-50 px-2 py-1 rounded-full">
-                                  <Star className="h-4 w-4 text-yellow-500 fill-current mr-1" />
-                                  <span className="text-sm font-semibold text-yellow-700">{salon.rating}</span>
-                                </div>
-                                <div className="flex items-center text-gray-600">
-                                  <Clock className="h-4 w-4 mr-1" />
-                                  <span className="text-sm">{salon.estimatedWaitTime || 15}min</span>
-                                </div>
-                              </div>
-                              <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                salon.queueCount > 5 
-                                  ? 'bg-orange-100 text-orange-700' 
-                                  : 'bg-green-100 text-green-700'
-                              }`}>
-                                {salon.queueCount} in queue
-                              </div>
-                            </div>
-                            <Button 
-                              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold py-2 rounded-xl transition-all duration-300"
-                              onClick={(e) => {
-                                if (!user) {
-                                  e.preventDefault();
-                                  window.location.href = '/auth';
-                                  return;
-                                }
-                              }}
-                            >
-                              {user ? 'Join Queue' : 'Sign in to Join'}
-                            </Button>
-                          </CardContent>
-                        </Card>
-                      </Link>
+                      <div key={salon.id} className="min-w-[320px]">
+                        <SalonCard salon={salon} />
+                      </div>
                     ))}
                   </div>
                 ) : (
@@ -769,39 +710,9 @@ export default function Home() {
                     {/* First Row */}
                     <div className="flex gap-4">
                       {topSalonsWithOffers.slice(0, 4).map((salon) => (
-                        <Link key={salon.id} href={`/salon/${salon.id}`}>
-                          <Card className="min-w-[280px] overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300">
-                            <div className="relative">
-                              {salon.photos && salon.photos.length > 0 ? (
-                                <img 
-                                  src={salon.photos[0].url} 
-                                  alt={salon.name}
-                                  className="w-full h-32 object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-32 bg-muted flex items-center justify-center">
-                                  <ImageIcon className="h-8 w-8 text-muted-foreground" />
-                                </div>
-                              )}
-                              {salon.offers && salon.offers.length > 0 && (
-                                <Badge className="absolute top-2 right-2 bg-red-500 text-white">
-                                  {Math.max(...salon.offers.map(offer => offer.discount))}% OFF
-                                </Badge>
-                              )}
-                            </div>
-                            <CardContent className="p-4">
-                              <h3 className="font-semibold text-gray-900 mb-1">{salon.name}</h3>
-                              <p className="text-sm text-gray-600 mb-2">{salon.location}</p>
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center">
-                                  <Star className="h-4 w-4 text-yellow-400 fill-current mr-1" />
-                                  <span className="text-sm font-medium">{salon.rating}</span>
-                                </div>
-                                <span className="text-xs text-gray-500">{salon.queueCount} in queue</span>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </Link>
+                        <div key={salon.id} className="min-w-[280px]">
+                          <SalonCard salon={salon} />
+                        </div>
                       ))}
                     </div>
 
@@ -809,39 +720,9 @@ export default function Home() {
                     {topSalonsWithOffers.length > 4 && (
                       <div className="flex gap-4">
                         {topSalonsWithOffers.slice(4, 8).map((salon) => (
-                          <Link key={salon.id} href={`/salon/${salon.id}`}>
-                            <Card className="min-w-[280px] overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300">
-                              <div className="relative">
-                                {salon.photos && salon.photos.length > 0 ? (
-                                  <img 
-                                    src={salon.photos[0].url} 
-                                    alt={salon.name}
-                                    className="w-full h-32 object-cover"
-                                  />
-                                ) : (
-                                  <div className="w-full h-32 bg-muted flex items-center justify-center">
-                                    <ImageIcon className="h-8 w-8 text-muted-foreground" />
-                                  </div>
-                                )}
-                                {salon.offers && salon.offers.length > 0 && (
-                                  <Badge className="absolute top-2 right-2 bg-red-500 text-white">
-                                    {Math.max(...salon.offers.map(offer => offer.discount))}% OFF
-                                  </Badge>
-                                )}
-                              </div>
-                              <CardContent className="p-4">
-                                <h3 className="font-semibold text-gray-900 mb-1">{salon.name}</h3>
-                                <p className="text-sm text-gray-600 mb-2">{salon.location}</p>
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center">
-                                    <Star className="h-4 w-4 text-yellow-400 fill-current mr-1" />
-                                    <span className="text-sm font-medium">{salon.rating}</span>
-                                  </div>
-                                  <span className="text-xs text-gray-500">{salon.queueCount} in queue</span>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          </Link>
+                          <div key={salon.id} className="min-w-[280px]">
+                            <SalonCard salon={salon} />
+                          </div>
                         ))}
                       </div>
                     )}
@@ -900,46 +781,12 @@ export default function Home() {
           {/* Explore Salons Display */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
             {exploreSalons.map((salon) => (
-              <Link key={salon.id} href={`/salon/${salon.id}`}>
-                <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300">
-                  <div className="relative">
-                    {salon.photos && salon.photos.length > 0 ? (
-                      <img 
-                        src={salon.photos[0].url} 
-                        alt={salon.name}
-                        className="w-full h-32 object-cover"
-                      />
-                    ) : (
-                      <img 
-                        src="https://images.unsplash.com/photo-1560066984-138dadb4c035?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=200" 
-                        alt={salon.name}
-                        className="w-full h-32 object-cover"
-                      />
-                    )}
-                    {salon.offers && salon.offers.length > 0 && (
-                      <Badge className="absolute top-2 right-2 bg-red-500 text-white">
-                        {Math.max(...salon.offers.map(offer => offer.discount))}% OFF
-                      </Badge>
-                    )}
-                  </div>
-                  <CardContent className="p-4">
-                    <h3 className="font-semibold text-gray-900 mb-1">{salon.name}</h3>
-                    <p className="text-sm text-gray-600 mb-2">{salon.location}</p>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <Star className="h-4 w-4 text-yellow-400 fill-current mr-1" />
-                        <span className="text-sm font-medium">{salon.rating}</span>
-                      </div>
-                      <span className="text-xs text-gray-500">{salon.queueCount} in queue</span>
-                    </div>
-                    {exploreFilter === 'nearest' && (salon as any).distance && (
-                      <p className="text-xs text-blue-600 mt-1">
-                        {((salon as any).distance).toFixed(1)} km away
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              </Link>
+              <SalonCard 
+                key={salon.id} 
+                salon={salon} 
+                showDistance={exploreFilter === 'nearest'}
+                distance={(salon as any).distance}
+              />
             ))}
           </div>
         </div>
