@@ -19,6 +19,9 @@ import {
 import { IStorage } from "./storage";
 import { UserModel, SalonModel, ServiceModel, QueueModel, OfferModel, ReviewModel, SalonPhotoModel } from "./db";
 
+// Export User model for OTP service
+export { UserModel as User };
+
 export class MongoStorage implements IStorage {
   // Users
   async getUser(id: string): Promise<User | undefined> {

@@ -19,6 +19,11 @@ import {
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { uploadImageToCloudinary, deleteImageFromCloudinary } from "./cloudinary";
+import otpService from "./otpService";
+import dotenv from "dotenv";
+
+// Load environment variables
+dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET || "smartq-secret-key";
 const storage = new MongoStorage();
@@ -122,27 +127,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ====================
   app.post('/api/auth/register', async (req, res) => {
     try {
-      // Ensure role is properly set to salon_owner if salon is selected
-      if (req.body.role === 'salon') {
-        req.body.role = 'salon_owner';
-      }
-      
-      console.log('Registration data:', req.body); // Log registration data
       const userData = insertUserSchema.parse(req.body);
-      console.log('Parsed user data:', userData); // Log parsed data
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(userData.email);
+      if (existingUser) {
+        return res.status(400).json({ message: 'User already exists with this email' });
+      }
 
-      const user = await storage.createUser(userData);
-      console.log('Created user:', user); // Log created user
+      // Create user with verification fields
+      const hashedPassword = await bcrypt.hash(userData.password, 10);
+      const user = await storage.createUser({
+        ...userData,
+        password: hashedPassword,
+        emailVerified: false,
+        phoneVerified: false,
+        isVerified: false,
+      });
 
-      const token = jwt.sign(
-        { userId: user.id, email: user.email, role: user.role },
-        JWT_SECRET,
-        { expiresIn: '24h' }
-      );
-
-      res.status(201).json({ user: { ...user, password: undefined }, token });
+      // Return user data without token (no auto-login)
+      const { password, ...userWithoutPassword } = user;
+      res.json({ 
+        user: userWithoutPassword,
+        message: 'Account created successfully. Please verify your email and phone number.'
+      });
     } catch (error) {
-      console.error('Registration error:', error); // Log error
+      console.error('Registration error:', error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: 'Validation failed', errors: error.errors });
       }
@@ -163,6 +173,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const isValidPassword = await bcrypt.compare(password, user.password);
       if (!isValidPassword) return res.status(401).json({ message: 'Invalid credentials' });
+
+      // Check if user is verified
+      if (!user.isVerified) {
+        return res.status(403).json({ 
+          message: 'Account not verified. Please complete email and phone verification.',
+          requiresVerification: true,
+          userId: user.id
+        });
+      }
 
       const token = jwt.sign(
         { userId: user.id, email: user.email, role: user.role },
@@ -859,6 +878,183 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Photo deletion error:', error);
       res.status(500).json({ message: 'Failed to delete photo', error });
+    }
+  });
+
+  // OTP Verification Routes
+  
+  // Send email OTP
+  app.post('/api/auth/send-email-otp', async (req, res) => {
+    try {
+      const { userId } = req.body;
+      
+      if (!userId) {
+        return res.status(400).json({ message: 'User ID is required' });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      const success = await otpService.sendEmailOTP(userId, user.email, user.name);
+      
+      if (success) {
+        res.json({ message: 'Email OTP sent successfully' });
+      } else {
+        res.status(500).json({ message: 'Failed to send email OTP' });
+      }
+    } catch (error) {
+      console.error('Send email OTP error:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Send phone OTP
+  app.post('/api/auth/send-phone-otp', async (req, res) => {
+    try {
+      const { userId } = req.body;
+      
+      if (!userId) {
+        return res.status(400).json({ message: 'User ID is required' });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user || !user.phone) {
+        return res.status(404).json({ message: 'User not found or no phone number' });
+      }
+
+      const success = await otpService.sendPhoneOTP(userId, user.phone, user.name);
+      
+      if (success) {
+        res.json({ message: 'WhatsApp OTP sent successfully' });
+      } else {
+        res.status(500).json({ message: 'Failed to send WhatsApp OTP' });
+      }
+    } catch (error) {
+      console.error('Send phone OTP error:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Verify email OTP
+  app.post('/api/auth/verify-email-otp', async (req, res) => {
+    try {
+      const { userId, otp } = req.body;
+      
+      if (!userId || !otp) {
+        return res.status(400).json({ message: 'User ID and OTP are required' });
+      }
+
+      const success = await otpService.verifyEmailOTP(userId, otp);
+      
+      if (success) {
+        res.json({ message: 'Email verified successfully' });
+      } else {
+        res.status(400).json({ message: 'Invalid or expired OTP' });
+      }
+    } catch (error) {
+      console.error('Verify email OTP error:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Verify phone OTP
+  app.post('/api/auth/verify-phone-otp', async (req, res) => {
+    try {
+      const { userId, otp } = req.body;
+      
+      if (!userId || !otp) {
+        return res.status(400).json({ message: 'User ID and OTP are required' });
+      }
+
+      const success = await otpService.verifyPhoneOTP(userId, otp);
+      
+      if (success) {
+        res.json({ message: 'Phone verified successfully' });
+      } else {
+        res.status(400).json({ message: 'Invalid or expired OTP' });
+      }
+    } catch (error) {
+      console.error('Verify phone OTP error:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Resend email OTP
+  app.post('/api/auth/resend-email-otp', async (req, res) => {
+    try {
+      const { userId } = req.body;
+      
+      if (!userId) {
+        return res.status(400).json({ message: 'User ID is required' });
+      }
+
+      const success = await otpService.resendEmailOTP(userId);
+      
+      if (success) {
+        res.json({ message: 'Email OTP resent successfully' });
+      } else {
+        res.status(500).json({ message: 'Failed to resend email OTP' });
+      }
+    } catch (error) {
+      console.error('Resend email OTP error:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // Resend phone OTP
+  app.post('/api/auth/resend-phone-otp', async (req, res) => {
+    try {
+      const { userId } = req.body;
+      
+      if (!userId) {
+        return res.status(400).json({ message: 'User ID is required' });
+      }
+
+      const success = await otpService.resendPhoneOTP(userId);
+      
+      if (success) {
+        res.json({ message: 'WhatsApp OTP resent successfully' });
+      } else {
+        res.status(500).json({ message: 'Failed to resend WhatsApp OTP' });
+      }
+    } catch (error) {
+      console.error('Resend phone OTP error:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // WhatsApp webhook verification
+  app.get('/api/webhook/whatsapp', async (req, res) => {
+    try {
+      const mode = req.query['hub.mode'];
+      const token = req.query['hub.verify_token'];
+      const challenge = req.query['hub.challenge'];
+
+      const whatsappService = await import('./whatsappService');
+      const result = await whatsappService.default.verifyWebhook(mode as string, token as string, challenge as string);
+      
+      if (result) {
+        res.status(200).send(result);
+      } else {
+        res.status(403).json({ message: 'Webhook verification failed' });
+      }
+    } catch (error) {
+      console.error('WhatsApp webhook verification error:', error);
+      res.status(500).json({ message: 'Internal server error' });
+    }
+  });
+
+  // WhatsApp webhook handler
+  app.post('/api/webhook/whatsapp', async (req, res) => {
+    try {
+      const whatsappService = await import('./whatsappService');
+      await whatsappService.default.handleWebhook(req.body);
+      res.status(200).json({ message: 'Webhook processed' });
+    } catch (error) {
+      console.error('WhatsApp webhook handler error:', error);
+      res.status(500).json({ message: 'Internal server error' });
     }
   });
 

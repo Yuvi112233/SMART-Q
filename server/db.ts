@@ -28,6 +28,13 @@ const userSchema = new mongoose.Schema({
   role: { type: String, required: true, default: 'customer', enum: ['customer', 'salon_owner'] },
   loyaltyPoints: { type: Number, default: 0 },
   favoriteSalons: { type: [String], default: [] },
+  // Verification fields
+  emailVerified: { type: Boolean, default: false },
+  phoneVerified: { type: Boolean, default: false },
+  emailOTP: { type: String },
+  phoneOTP: { type: String },
+  otpExpiry: { type: Date },
+  isVerified: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
 });
 
