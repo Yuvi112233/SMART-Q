@@ -27,52 +27,7 @@ class WhatsAppService {
     });
   }
 
-  async sendOTP(phoneNumber: string, otp: string, name: string = 'User'): Promise<boolean> {
-    try {
-      console.log(`Attempting to send WhatsApp OTP to: ${phoneNumber}`);
-      console.log(`WhatsApp config check - Token length: ${this.accessToken.length}, Phone ID: ${this.phoneNumberId}`);
-      
-      // Ensure phone number is in international format
-      const formattedPhone = this.formatPhoneNumber(phoneNumber);
-      console.log(`Formatted phone number: ${formattedPhone}`);
-      
-      // For now, we'll use a simple text message since templates need approval
-      const textMessageData = {
-        messaging_product: 'whatsapp',
-        to: formattedPhone,
-        type: 'text',
-        text: {
-          body: `🔐 SmartQ Verification\n\nHi ${name}!\n\nYour verification code is: *${otp}*\n\nThis code will expire in 5 minutes.\n\n⚠️ Do not share this code with anyone.`
-        }
-      };
-
-      const response = await fetch(this.baseUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(textMessageData)
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('WhatsApp message sent successfully:', data);
-        return true;
-      } else {
-        const errorData = await response.json();
-        console.error('WhatsApp API error:', response.status, errorData);
-        console.error('Full error response:', JSON.stringify(errorData, null, 2));
-        return false;
-      }
-    } catch (error: unknown) {
-      console.error('WhatsApp sending failed:', error);
-      if (error instanceof Error) {
-        console.error('Error message:', error.message);
-      }
-      return false;
-    }
-  }
+  
 
   private formatPhoneNumber(phoneNumber: string): string {
     // Remove all non-digit characters
