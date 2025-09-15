@@ -13,7 +13,6 @@ import { useAuth } from "../context/AuthContext";
 import { api } from "../lib/api";
 import { insertUserSchema, loginSchema } from "@shared/schema";
 import { Eye, EyeOff, Sparkles, User, Mail, Phone, Lock, UserCheck, ArrowLeft, Home } from "lucide-react";
-import OTPVerification from "../components/OTPVerification";
 
 const registerFormSchema = insertUserSchema.extend({
   confirmPassword: z.string().min(6),
@@ -30,8 +29,6 @@ export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [showOTPVerification, setShowOTPVerification] = useState(false);
-  const [registeredUser, setRegisteredUser] = useState(null);
   const { login } = useAuth();
   const { toast } = useToast();
 
@@ -77,22 +74,11 @@ export default function Auth() {
       setLocation(data.user.role === 'salon_owner' ? '/dashboard' : '/');
     },
     onError: (error) => {
-      // Check if user needs verification
-      if (error.message.includes('not verified') && error.requiresVerification) {
-        const userData = { id: error.userId, email: loginForm.getValues('email') };
-        setRegisteredUser(userData);
-        setShowOTPVerification(true);
-        toast({
-          title: "Account Verification Required",
-          description: "Please complete your email and phone verification.",
-        });
-      } else {
-        toast({
-          title: "Login failed",
-          description: error.message,
-          variant: "destructive",
-        });
-      }
+      toast({
+        title: "Login failed",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -106,13 +92,12 @@ export default function Auth() {
       return api.auth.register(userData);
     },
     onSuccess: (data) => {
-      // Store user data for OTP verification
-      setRegisteredUser(data.user);
-      setShowOTPVerification(true);
+      login(data.user, data.token);
       toast({
-        title: "Account Created!",
-        description: "Please verify your email and phone number to complete registration.",
+        title: "Welcome!",
+        description: "You've been successfully registered and logged in.",
       });
+      setLocation(data.user.role === 'salon_owner' ? '/dashboard' : '/');
     },
     onError: (error) => {
       toast({
@@ -143,47 +128,6 @@ export default function Auth() {
     registerMutation.mutate(userData);
   };
 
-  const handleVerificationComplete = async () => {
-    if (registeredUser) {
-      try {
-        // Login the user after successful verification to get a proper token
-        const loginResponse = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            email: registeredUser.email, 
-            password: registerForm.getValues('password') 
-          }),
-        });
-
-        if (loginResponse.ok) {
-          const data = await loginResponse.json();
-          login(data.user, data.token);
-          toast({
-            title: "Welcome to SmartQ!",
-            description: "Your account has been verified successfully.",
-          });
-          setLocation(data.user.role === 'salon_owner' ? '/dashboard' : '/');
-        } else {
-          // Fallback if login fails
-          toast({
-            title: "Verification Complete!",
-            description: "Please login with your credentials to continue.",
-          });
-          setShowOTPVerification(false);
-          setIsLogin(true);
-        }
-      } catch (error) {
-        toast({
-          title: "Verification Complete!",
-          description: "Please login with your credentials to continue.",
-        });
-        setShowOTPVerification(false);
-        setIsLogin(true);
-      }
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 flex items-center justify-center p-4 relative overflow-hidden">
       {/* Home Button */}
@@ -203,15 +147,6 @@ export default function Auth() {
       </div>
 
       <div className="w-full max-w-md relative z-10">
-        {/* Show OTP Verification or Auth Form */}
-        {showOTPVerification && registeredUser ? (
-          <OTPVerification
-            userId={registeredUser.id}
-            email={registeredUser.email}
-            phone={registeredUser.phone}
-            onVerificationComplete={handleVerificationComplete}
-          />
-        ) : (
           <>
             {/* App Logo/Brand */}
             <div className="text-center mb-8">
@@ -507,7 +442,6 @@ export default function Auth() {
               </p>
             </div>
           </>
-        )}
       </div>
     </div>
   );

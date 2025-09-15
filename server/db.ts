@@ -31,9 +31,7 @@ const userSchema = new mongoose.Schema({
   // Verification fields
   emailVerified: { type: Boolean, default: false },
   phoneVerified: { type: Boolean, default: false },
-  emailOTP: { type: String },
-  phoneOTP: { type: String },
-  otpExpiry: { type: Date },
+  
   isVerified: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
 });
