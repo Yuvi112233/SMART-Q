@@ -54,7 +54,7 @@ app.use((req, res, next) => {
       if (logLine.length > 80) {
         logLine = logLine.slice(0, 79) + "…";
       }
-      log(logLine);
+      console.log(logLine);
     }
   });
 
@@ -93,7 +93,7 @@ const clientDistPath = path.resolve(__dirname, "../client/dist");
       host: "0.0.0.0",
     },
     () => {
-      log(`🚀 Serving on port ${port}`);
+     console.log(`🚀 Serving on port ${port}`);
     }
   );
 })();

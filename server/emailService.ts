@@ -31,7 +31,7 @@ class EmailService {
       passLength: config.auth.pass.length
     });
 
-    this.transporter = nodemailer.createTransporter(config);
+    this.transporter = nodemailer.createTransport(config);
     
     // Verify connection configuration
     this.transporter.verify((error, success) => {
