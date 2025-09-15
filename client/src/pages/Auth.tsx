@@ -13,6 +13,7 @@ import { useAuth } from "../context/AuthContext";
 import { api } from "../lib/api";
 import { insertUserSchema, loginSchema } from "@shared/schema";
 import { Eye, EyeOff, Sparkles, User, Mail, Phone, Lock, UserCheck, ArrowLeft, Home } from "lucide-react";
+import OTPVerification from "../components/OTPVerification";
 
 const registerFormSchema = insertUserSchema.extend({
   confirmPassword: z.string().min(6),
@@ -29,6 +30,8 @@ export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showOTPVerification, setShowOTPVerification] = useState(false);
+  const [registeredUser, setRegisteredUser] = useState(null);
   const { login } = useAuth();
   const { toast } = useToast();
 
@@ -74,11 +77,22 @@ export default function Auth() {
       setLocation(data.user.role === 'salon_owner' ? '/dashboard' : '/');
     },
     onError: (error) => {
-      toast({
-        title: "Login failed",
-        description: error.message,
-        variant: "destructive",
-      });
+      // Check if user needs verification
+      if (error.message.includes('not verified') && error.requiresVerification) {
+        const userData = { id: error.userId, email: loginForm.getValues('email') };
+        setRegisteredUser(userData);
+        setShowOTPVerification(true);
+        toast({
+          title: "Account Verification Required",
+          description: "Please complete your email and phone verification.",
+        });
+      } else {
+        toast({
+          title: "Login failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
     },
   });
 
@@ -92,12 +106,13 @@ export default function Auth() {
       return api.auth.register(userData);
     },
     onSuccess: (data) => {
-      login(data.user, data.token);
+      // Store user data for OTP verification
+      setRegisteredUser(data.user);
+      setShowOTPVerification(true);
       toast({
-        title: "Welcome to SmartQ!",
-        description: "Your account has been created successfully.",
+        title: "Account Created!",
+        description: "Please verify your email and phone number to complete registration.",
       });
-      setLocation(data.user.role === 'salon_owner' ? '/dashboard' : '/');
     },
     onError: (error) => {
       toast({
@@ -128,6 +143,47 @@ export default function Auth() {
     registerMutation.mutate(userData);
   };
 
+  const handleVerificationComplete = async () => {
+    if (registeredUser) {
+      try {
+        // Login the user after successful verification to get a proper token
+        const loginResponse = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            email: registeredUser.email, 
+            password: registerForm.getValues('password') 
+          }),
+        });
+
+        if (loginResponse.ok) {
+          const data = await loginResponse.json();
+          login(data.user, data.token);
+          toast({
+            title: "Welcome to SmartQ!",
+            description: "Your account has been verified successfully.",
+          });
+          setLocation(data.user.role === 'salon_owner' ? '/dashboard' : '/');
+        } else {
+          // Fallback if login fails
+          toast({
+            title: "Verification Complete!",
+            description: "Please login with your credentials to continue.",
+          });
+          setShowOTPVerification(false);
+          setIsLogin(true);
+        }
+      } catch (error) {
+        toast({
+          title: "Verification Complete!",
+          description: "Please login with your credentials to continue.",
+        });
+        setShowOTPVerification(false);
+        setIsLogin(true);
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 flex items-center justify-center p-4 relative overflow-hidden">
       {/* Home Button */}
@@ -147,52 +203,62 @@ export default function Auth() {
       </div>
 
       <div className="w-full max-w-md relative z-10">
-        {/* App Logo/Brand */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl mb-4 shadow-lg">
-            <Sparkles className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-            SmartQ
-          </h1>
-          <p className="text-gray-600 text-sm mt-1">Skip the wait, book your spot</p>
-        </div>
+        {/* Show OTP Verification or Auth Form */}
+        {showOTPVerification && registeredUser ? (
+          <OTPVerification
+            userId={registeredUser.id}
+            email={registeredUser.email}
+            phone={registeredUser.phone}
+            onVerificationComplete={handleVerificationComplete}
+          />
+        ) : (
+          <>
+            {/* App Logo/Brand */}
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl mb-4 shadow-lg">
+                <Sparkles className="w-8 h-8 text-white" />
+              </div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                SmartQ
+              </h1>
+              <p className="text-gray-600 text-sm mt-1">Skip the wait, book your spot</p>
+            </div>
 
-        {/* Auth Toggle Tabs */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-1 mb-6 shadow-lg border border-white/20">
-          <div className="grid grid-cols-2 gap-1">
-            <button
-              onClick={() => {
-                setIsLogin(true);
-                registerForm.reset();
-                setShowPassword(false);
-                setShowConfirmPassword(false);
-              }}
-              className={`py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-300 ${
-                isLogin
-                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
-                  : 'text-gray-600 hover:text-gray-800'
-              }`}
-            >
-              Sign In
-            </button>
-            <button
-              onClick={() => {
-                setIsLogin(false);
-                loginForm.reset();
-                setShowPassword(false);
-                setShowConfirmPassword(false);
-              }}
-              className={`py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-300 ${
-                !isLogin
-                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
-                  : 'text-gray-600 hover:text-gray-800'
-              }`}
-            >
-              Sign Up
-            </button>
-          </div>
-        </div>
+            {/* Auth Toggle Tabs */}
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-1 mb-6 shadow-lg border border-white/20">
+              <div className="grid grid-cols-2 gap-1">
+                <button
+                  onClick={() => {
+                    setIsLogin(true);
+                    registerForm.reset();
+                    setShowPassword(false);
+                    setShowConfirmPassword(false);
+                  }}
+                  className={`py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-300 ${
+                    isLogin
+                      ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
+                      : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                >
+                  Sign In
+                </button>
+                <button
+                  onClick={() => {
+                    setIsLogin(false);
+                    loginForm.reset();
+                    setShowPassword(false);
+                    setShowConfirmPassword(false);
+                  }}
+                  className={`py-3 px-4 rounded-xl font-semibold text-sm transition-all duration-300 ${
+                    !isLogin
+                      ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
+                      : 'text-gray-600 hover:text-gray-800'
+                  }`}
+                >
+                  Sign Up
+                </button>
+              </div>
+            </div>
 
         {/* Main Auth Card */}
         <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl border border-white/20 overflow-hidden">
@@ -432,14 +498,16 @@ export default function Auth() {
           </div>
         </div>
 
-        {/* Footer Text */}
-        <div className="text-center mt-6">
-          <p className="text-sm text-gray-600">
-            By continuing, you agree to SmartQ's{" "}
-            <span className="text-purple-600 font-medium">Terms of Service</span> and{" "}
-            <span className="text-purple-600 font-medium">Privacy Policy</span>
-          </p>
-        </div>
+            {/* Footer Text */}
+            <div className="text-center mt-6">
+              <p className="text-sm text-gray-600">
+                By continuing, you agree to SmartQ's{" "}
+                <span className="text-purple-600 font-medium">Terms of Service</span> and{" "}
+                <span className="text-purple-600 font-medium">Privacy Policy</span>
+              </p>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

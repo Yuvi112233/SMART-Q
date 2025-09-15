@@ -1,8 +1,11 @@
+import dotenv from "dotenv";
+// Load environment variables first
+dotenv.config();
+
 import express from "express";
 import { registerRoutes } from "./routes";
-import { setupVite, log } from "./vite";
+import { setupVite, serveStatic } from "./vite";
 import { connectDB } from "./db";
-import dotenv from "dotenv";
 import { errorHandler } from "./errorHandler";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -11,8 +14,7 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load environment variables
-dotenv.config();
+// Environment variables already loaded at the top
 
 // Connect to MongoDB
 let isMongoConnected = false;
