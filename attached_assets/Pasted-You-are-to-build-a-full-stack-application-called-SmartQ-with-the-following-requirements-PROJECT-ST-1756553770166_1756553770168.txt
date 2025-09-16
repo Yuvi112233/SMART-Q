@@ -1,0 +1,101 @@
+You are to build a full-stack application called SmartQ with the following requirements:
+
+PROJECT STRUCTURE
+
+Create two main folders:
+
+/client → ReactJS frontend
+
+/server → Node.js + Express backend
+
+Both should have their own package.json.
+
+The root should include instructions to run both concurrently using npm run dev.
+
+DEVELOPMENT WORKFLOW
+
+Frontend runs at http://localhost:3000 with hot reload.
+
+Backend runs at http://localhost:5000 with nodemon.
+
+API requests from frontend should be proxied to backend (set "proxy": "http://localhost:5000" in client).
+
+Configure CORS for development and production.
+
+BACKEND REQUIREMENTS (/server)
+
+Use Node.js + Express + MongoDB (Mongoose).
+
+Implement JWT authentication for users.
+
+Models needed:
+
+User → fields: name, email, password, role (customer | salon), loyaltyPoints.
+
+Salon → fields: ownerId, name, description, location, services[], operatingHours, rating, reviews[], images[].
+
+Queue → fields: salonId, userId, serviceId, status (waiting | in-progress | completed | no-show), position, timestamp.
+
+Service → fields: salonId, name, duration, price, description.
+
+Offer → fields: salonId, title, description, discount, validityPeriod, isActive.
+
+Routes (CRUD):
+
+/auth → register, login, profile management
+
+/salons → create, read, update, delete salons
+
+/services → CRUD services
+
+/queue → join queue, leave queue, update queue status, get queue status
+
+/offers → CRUD offers
+
+/analytics → fetch revenue, wait times, customer behavior, service popularity
+
+Middleware:
+
+Authentication & Authorization
+
+Error handling
+
+FRONTEND REQUIREMENTS (/client)
+
+Built with ReactJS + React Router + Axios.
+
+Pages:
+
+Home Page → Discover salons, search
+
+Salon Profile Page → Services list, offers, join queue
+
+Queue Page → Track position, real-time updates, notifications
+
+Dashboard (Salon Owner) → Manage queues, services, offers, view analytics
+
+Auth Pages → Login, Register, Profile
+
+Implement state management (React Context or Redux).
+
+Use Tailwind CSS for styling.
+
+Handle notifications for queue updates.
+
+EXTRA FEATURES
+
+Loyalty points system → users earn points on visits.
+
+Rating/review system for salons.
+
+Analytics for salon owners (charts for revenue, queue times, service popularity).
+
+FINAL REQUIREMENT
+
+Make sure:
+
+The app runs with npm run dev (concurrently starts both client & server).
+
+Code is clean, modular, and production-ready.
+
+Provide a working starting point for all routes, components, and APIs.

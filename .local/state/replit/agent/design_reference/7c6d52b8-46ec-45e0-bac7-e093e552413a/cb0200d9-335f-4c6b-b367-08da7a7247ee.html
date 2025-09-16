@@ -1,0 +1,885 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartQ - Salon Queue Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                borderRadius: {
+                    lg: "var(--radius)",
+                    md: "calc(var(--radius) - 2px)",
+                    sm: "calc(var(--radius) - 4px)",
+                },
+                colors: {
+                    background: "var(--background)",
+                    foreground: "var(--foreground)",
+                    card: {
+                        DEFAULT: "var(--card)",
+                        foreground: "var(--card-foreground)",
+                    },
+                    popover: {
+                        DEFAULT: "var(--popover)",
+                        foreground: "var(--popover-foreground)",
+                    },
+                    primary: {
+                        DEFAULT: "var(--primary)",
+                        foreground: "var(--primary-foreground)",
+                    },
+                    secondary: {
+                        DEFAULT: "var(--secondary)",
+                        foreground: "var(--secondary-foreground)",
+                    },
+                    muted: {
+                        DEFAULT: "var(--muted)",
+                        foreground: "var(--muted-foreground)",
+                    },
+                    accent: {
+                        DEFAULT: "var(--accent)",
+                        foreground: "var(--accent-foreground)",
+                    },
+                    destructive: {
+                        DEFAULT: "var(--destructive)",
+                        foreground: "var(--destructive-foreground)",
+                    },
+                    border: "var(--border)",
+                    input: "var(--input)",
+                    ring: "var(--ring)",
+                },
+                fontFamily: {
+                    sans: ["Inter", "sans-serif"],
+                }
+            },
+        }
+    };
+    </script>
+    <style>
+        :root {
+            --background: hsl(0 0% 100%);
+            --foreground: hsl(210 10% 16%);
+            --card: hsl(0 0% 100%);
+            --card-foreground: hsl(210 10% 16%);
+            --popover: hsl(0 0% 100%);
+            --popover-foreground: hsl(210 10% 16%);
+            --primary: hsl(342 95% 62%);
+            --primary-foreground: hsl(0 0% 100%);
+            --secondary: hsl(338 100% 97%);
+            --secondary-foreground: hsl(210 10% 16%);
+            --muted: hsl(210 6% 93%);
+            --muted-foreground: hsl(210 6% 40%);
+            --accent: hsl(338 100% 97%);
+            --accent-foreground: hsl(210 10% 16%);
+            --destructive: hsl(0 84% 60%);
+            --destructive-foreground: hsl(0 0% 100%);
+            --border: hsl(210 10% 92%);
+            --input: hsl(210 10% 92%);
+            --ring: hsl(342 95% 62%);
+            --radius: 0.75rem;
+        }
+
+        .dark {
+            --background: hsl(210 10% 8%);
+            --foreground: hsl(0 0% 95%);
+            --card: hsl(210 10% 11%);
+            --card-foreground: hsl(0 0% 95%);
+            --popover: hsl(210 10% 11%);
+            --popover-foreground: hsl(0 0% 95%);
+            --primary: hsl(342 95% 62%);
+            --primary-foreground: hsl(0 0% 100%);
+            --secondary: hsl(210 10% 15%);
+            --secondary-foreground: hsl(0 0% 95%);
+            --muted: hsl(210 10% 15%);
+            --muted-foreground: hsl(210 6% 60%);
+            --accent: hsl(210 10% 15%);
+            --accent-foreground: hsl(0 0% 95%);
+            --destructive: hsl(0 84% 60%);
+            --destructive-foreground: hsl(0 0% 100%);
+            --border: hsl(210 10% 20%);
+            --input: hsl(210 10% 20%);
+            --ring: hsl(342 95% 62%);
+        }
+
+        .gradient-pink {
+            background: linear-gradient(135deg, #FFEFF4 0%, #FFFFFF 100%);
+        }
+
+        .pulse-pink {
+            animation: pulse-pink 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse-pink {
+            0%, 100% {
+                opacity: 1;
+                background-color: hsl(342 95% 62%);
+            }
+            50% {
+                opacity: .8;
+                background-color: hsl(342 95% 72%);
+            }
+        }
+
+        .animate-fade-in {
+            animation: fade-in 0.5s ease-out;
+        }
+
+        @keyframes fade-in {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body class="bg-background font-sans antialiased">
+    <!-- Navigation Header -->
+    <!-- @COMPONENT: NavigationHeader -->
+    <header class="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-border">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-8">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                            <i class="fas fa-clock text-white text-sm"></i>
+                        </div>
+                        <span class="text-xl font-bold text-foreground">SmartQ</span>
+                    </div>
+                    <nav class="hidden md:flex space-x-6">
+                        <a href="#" class="text-muted-foreground hover:text-primary transition-colors duration-200">Discover</a>
+                        <a href="#" class="text-muted-foreground hover:text-primary transition-colors duration-200">My Queue</a>
+                        <a href="#" class="text-muted-foreground hover:text-primary transition-colors duration-200">Loyalty</a>
+                    </nav>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button class="hidden md:flex items-center space-x-2 text-muted-foreground hover:text-primary transition-colors duration-200">
+                        <i class="fas fa-bell"></i>
+                        <span class="w-2 h-2 bg-primary rounded-full"></span>
+                    </button>
+                    <button class="bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium hover:bg-primary/90 transition-colors duration-200">
+                        Sign In
+                    </button>
+                    <button class="md:hidden">
+                        <i class="fas fa-bars text-muted-foreground"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+    <!-- @END_COMPONENT: NavigationHeader -->
+
+    <!-- Hero Section -->
+    <!-- @COMPONENT: HeroSection -->
+    <section class="gradient-pink py-16 md:py-24">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid lg:grid-cols-2 gap-12 items-center">
+                <div class="animate-fade-in">
+                    <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground leading-tight mb-6">
+                        Skip the wait,<br>
+                        <span class="text-primary">book your spot</span>
+                    </h1>
+                    <p class="text-lg text-muted-foreground mb-8 leading-relaxed">
+                        Join virtual queues at your favorite salons. Get real-time updates, earn loyalty points, and never wait in line again.
+                    </p>
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <button class="bg-primary text-primary-foreground px-8 py-4 rounded-xl font-semibold hover:bg-primary/90 transition-all duration-200 shadow-lg hover:shadow-xl">
+                            Find Salons Near You
+                        </button>
+                        <button class="border border-border text-foreground px-8 py-4 rounded-xl font-semibold hover:bg-muted transition-all duration-200">
+                            For Salon Owners
+                        </button>
+                    </div>
+                    
+                    <!-- Search Bar -->
+                    <div class="mt-12 bg-white rounded-2xl shadow-xl p-2">
+                        <div class="flex flex-col md:flex-row gap-2">
+                            <div class="flex-1 relative">
+                                <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground"></i>
+                                <input 
+                                    type="text" 
+                                    placeholder="Search salons or services..." 
+                                    class="w-full pl-12 pr-4 py-3 bg-transparent focus:outline-none text-foreground"
+                                    data-mock="true"
+                                />
+                            </div>
+                            <div class="flex-1 relative">
+                                <i class="fas fa-map-marker-alt absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground"></i>
+                                <input 
+                                    type="text" 
+                                    placeholder="Location" 
+                                    class="w-full pl-12 pr-4 py-3 bg-transparent focus:outline-none text-foreground"
+                                    data-mock="true"
+                                />
+                            </div>
+                            <button class="bg-primary text-primary-foreground px-8 py-3 rounded-xl font-semibold hover:bg-primary/90 transition-colors duration-200">
+                                Search
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Hero Image -->
+                <div class="relative">
+                    <!-- Modern salon interior with elegant styling -->
+                    <img 
+                        src="https://images.unsplash.com/photo-1562322140-8baeececf3df?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600" 
+                        alt="Modern salon interior with elegant styling and professional equipment" 
+                        class="rounded-2xl shadow-2xl w-full h-auto"
+                    />
+                    <div class="absolute -bottom-6 -left-6 bg-white rounded-xl shadow-xl p-4 animate-fade-in">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-users text-primary"></i>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-foreground">2,847</p>
+                                <p class="text-sm text-muted-foreground">Active queues</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- @END_COMPONENT: HeroSection -->
+
+    <!-- Featured Salons Section -->
+    <!-- @COMPONENT: FeaturedSalons -->
+    <section class="py-16 bg-background">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl md:text-4xl font-bold text-foreground mb-4">Popular Salons Near You</h2>
+                <p class="text-lg text-muted-foreground max-w-2xl mx-auto">
+                    Discover top-rated salons with the shortest wait times and best reviews
+                </p>
+            </div>
+            
+            <!-- @MAP: featuredSalons.map(salon => ( -->
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Salon Card 1 -->
+                <div class="bg-card rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                    <!-- Luxurious hair salon with modern equipment -->
+                    <img 
+                        src="https://images.unsplash.com/photo-1560066984-138dadb4c035?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=250" 
+                        alt="Luxurious hair salon with modern equipment and elegant decor" 
+                        class="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="text-xl font-semibold text-foreground" data-bind="salon.name">Bella Vista Salon</h3>
+                            <div class="flex items-center space-x-1">
+                                <i class="fas fa-star text-yellow-400"></i>
+                                <span class="text-sm font-medium text-foreground" data-bind="salon.rating">4.8</span>
+                            </div>
+                        </div>
+                        <p class="text-muted-foreground mb-4" data-bind="salon.location">Downtown • 0.5 miles</p>
+                        
+                        <!-- Queue Status -->
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center space-x-2">
+                                <div class="w-3 h-3 bg-green-500 rounded-full pulse-pink"></div>
+                                <span class="text-sm text-muted-foreground">2 people in queue</span>
+                            </div>
+                            <span class="text-sm font-medium text-foreground">~15 min wait</span>
+                        </div>
+                        
+                        <!-- Services Preview -->
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            <span class="px-3 py-1 bg-secondary text-secondary-foreground text-xs rounded-full">Haircut</span>
+                            <span class="px-3 py-1 bg-secondary text-secondary-foreground text-xs rounded-full">Color</span>
+                            <span class="px-3 py-1 bg-secondary text-secondary-foreground text-xs rounded-full">Styling</span>
+                        </div>
+                        
+                        <button class="w-full bg-primary text-primary-foreground py-3 rounded-xl font-semibold hover:bg-primary/90 transition-colors duration-200">
+                            Join Queue
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Salon Card 2 -->
+                <div class="bg-card rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                    <!-- Professional barbershop with vintage styling -->
+                    <img 
+                        src="https://images.unsplash.com/photo-1585747860715-2ba37e788b70?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=250" 
+                        alt="Professional barbershop with vintage styling and classic barber chairs" 
+                        class="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="text-xl font-semibold text-foreground" data-bind="salon.name">Elite Barber Shop</h3>
+                            <div class="flex items-center space-x-1">
+                                <i class="fas fa-star text-yellow-400"></i>
+                                <span class="text-sm font-medium text-foreground" data-bind="salon.rating">4.9</span>
+                            </div>
+                        </div>
+                        <p class="text-muted-foreground mb-4" data-bind="salon.location">Midtown • 1.2 miles</p>
+                        
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center space-x-2">
+                                <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                                <span class="text-sm text-muted-foreground">5 people in queue</span>
+                            </div>
+                            <span class="text-sm font-medium text-foreground">~30 min wait</span>
+                        </div>
+                        
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            <span class="px-3 py-1 bg-secondary text-secondary-foreground text-xs rounded-full">Haircut</span>
+                            <span class="px-3 py-1 bg-secondary text-secondary-foreground text-xs rounded-full">Beard Trim</span>
+                            <span class="px-3 py-1 bg-secondary text-secondary-foreground text-xs rounded-full">Shave</span>
+                        </div>
+                        
+                        <button class="w-full bg-primary text-primary-foreground py-3 rounded-xl font-semibold hover:bg-primary/90 transition-colors duration-200">
+                            Join Queue
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Salon Card 3 -->
+                <div class="bg-card rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group">
+                    <!-- Modern nail salon with clean aesthetic -->
+                    <img 
+                        src="https://images.unsplash.com/photo-1604654894610-df63bc536371?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=250" 
+                        alt="Modern nail salon with clean aesthetic and professional nail stations" 
+                        class="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="text-xl font-semibold text-foreground" data-bind="salon.name">Luxe Nails & Spa</h3>
+                            <div class="flex items-center space-x-1">
+                                <i class="fas fa-star text-yellow-400"></i>
+                                <span class="text-sm font-medium text-foreground" data-bind="salon.rating">4.7</span>
+                            </div>
+                        </div>
+                        <p class="text-muted-foreground mb-4" data-bind="salon.location">Uptown • 0.8 miles</p>
+                        
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center space-x-2">
+                                <div class="w-3 h-3 bg-green-500 rounded-full pulse-pink"></div>
+                                <span class="text-sm text-muted-foreground">1 person in queue</span>
+                            </div>
+                            <span class="text-sm font-medium text-foreground">~10 min wait</span>
+                        </div>
+                        
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            <span class="px-3 py-1 bg-secondary text-secondary-foreground text-xs rounded-full">Manicure</span>
+                            <span class="px-3 py-1 bg-secondary text-secondary-foreground text-xs rounded-full">Pedicure</span>
+                            <span class="px-3 py-1 bg-secondary text-secondary-foreground text-xs rounded-full">Gel Polish</span>
+                        </div>
+                        
+                        <button class="w-full bg-primary text-primary-foreground py-3 rounded-xl font-semibold hover:bg-primary/90 transition-colors duration-200">
+                            Join Queue
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <!-- @END_MAP )) -->
+        </div>
+    </section>
+    <!-- @END_COMPONENT: FeaturedSalons -->
+
+    <!-- Queue Status Dashboard Preview -->
+    <!-- @COMPONENT: QueueStatusPreview -->
+    <section class="py-16 gradient-pink">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid lg:grid-cols-2 gap-12 items-center">
+                <div>
+                    <h2 class="text-3xl md:text-4xl font-bold text-foreground mb-6">
+                        Track Your Queue in Real-Time
+                    </h2>
+                    <p class="text-lg text-muted-foreground mb-8 leading-relaxed">
+                        Get instant updates on your position, estimated wait time, and receive notifications when it's almost your turn.
+                    </p>
+                    
+                    <!-- Features List -->
+                    <div class="space-y-4">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-clock text-primary"></i>
+                            </div>
+                            <span class="text-foreground font-medium">Real-time position updates</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-bell text-primary"></i>
+                            </div>
+                            <span class="text-foreground font-medium">Smart notifications</span>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-star text-primary"></i>
+                            </div>
+                            <span class="text-foreground font-medium">Earn loyalty points</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Queue Status Card -->
+                <div class="bg-white rounded-2xl shadow-2xl p-6 max-w-md mx-auto">
+                    <div class="text-center mb-6">
+                        <h3 class="text-xl font-semibold text-foreground mb-2">Your Queue Status</h3>
+                        <p class="text-muted-foreground">Bella Vista Salon</p>
+                    </div>
+                    
+                    <!-- Position Circle -->
+                    <div class="relative mb-6">
+                        <svg class="w-32 h-32 mx-auto transform -rotate-90">
+                            <circle 
+                                cx="64" cy="64" r="56" 
+                                stroke="currentColor" 
+                                stroke-width="8" 
+                                fill="none" 
+                                class="text-muted/20"
+                            />
+                            <circle 
+                                cx="64" cy="64" r="56" 
+                                stroke="currentColor" 
+                                stroke-width="8" 
+                                fill="none" 
+                                stroke-dasharray="352" 
+                                stroke-dashoffset="88"
+                                class="text-primary"
+                            />
+                        </svg>
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <div class="text-center">
+                                <div class="text-2xl font-bold text-foreground" data-bind="queue.position">3</div>
+                                <div class="text-sm text-muted-foreground">in queue</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Wait Time -->
+                    <div class="text-center mb-6">
+                        <p class="text-3xl font-bold text-primary" data-bind="queue.estimatedWait">12 min</p>
+                        <p class="text-muted-foreground">estimated wait</p>
+                    </div>
+                    
+                    <!-- Status Updates -->
+                    <div class="space-y-3 mb-6">
+                        <div class="flex items-center space-x-3 p-3 bg-secondary rounded-lg">
+                            <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span class="text-sm text-secondary-foreground">Queue joined successfully</span>
+                        </div>
+                        <div class="flex items-center space-x-3 p-3 bg-secondary rounded-lg">
+                            <div class="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                            <span class="text-sm text-secondary-foreground">2 people served</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="flex space-x-3">
+                        <button class="flex-1 bg-primary text-primary-foreground py-2 rounded-lg font-medium hover:bg-primary/90 transition-colors duration-200">
+                            Get Directions
+                        </button>
+                        <button class="flex-1 border border-border text-foreground py-2 rounded-lg font-medium hover:bg-muted transition-colors duration-200">
+                            Leave Queue
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- @END_COMPONENT: QueueStatusPreview -->
+
+    <!-- Salon Owner Dashboard Preview -->
+    <!-- @COMPONENT: SalonOwnerDashboard -->
+    <section class="py-16 bg-background">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl md:text-4xl font-bold text-foreground mb-4">
+                    Powerful Tools for Salon Owners
+                </h2>
+                <p class="text-lg text-muted-foreground max-w-2xl mx-auto">
+                    Manage your queues, track analytics, and grow your business with our comprehensive dashboard
+                </p>
+            </div>
+            
+            <!-- Dashboard Preview -->
+            <div class="bg-card rounded-2xl shadow-xl overflow-hidden">
+                <!-- Dashboard Header -->
+                <div class="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-xl font-semibold mb-1">Bella Vista Salon</h3>
+                            <p class="opacity-90">Today's Overview</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-2xl font-bold">$1,247</p>
+                            <p class="opacity-90">Revenue Today</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Stats Grid -->
+                <div class="p-6">
+                    <div class="grid md:grid-cols-4 gap-6 mb-8">
+                        <div class="text-center">
+                            <div class="w-12 h-12 bg-primary/10 rounded-lg mx-auto mb-3 flex items-center justify-center">
+                                <i class="fas fa-users text-primary"></i>
+                            </div>
+                            <p class="text-2xl font-bold text-foreground" data-bind="analytics.customersToday">23</p>
+                            <p class="text-sm text-muted-foreground">Customers Today</p>
+                        </div>
+                        <div class="text-center">
+                            <div class="w-12 h-12 bg-primary/10 rounded-lg mx-auto mb-3 flex items-center justify-center">
+                                <i class="fas fa-clock text-primary"></i>
+                            </div>
+                            <p class="text-2xl font-bold text-foreground" data-bind="analytics.avgWaitTime">8.5</p>
+                            <p class="text-sm text-muted-foreground">Avg Wait (min)</p>
+                        </div>
+                        <div class="text-center">
+                            <div class="w-12 h-12 bg-primary/10 rounded-lg mx-auto mb-3 flex items-center justify-center">
+                                <i class="fas fa-star text-primary"></i>
+                            </div>
+                            <p class="text-2xl font-bold text-foreground" data-bind="analytics.rating">4.8</p>
+                            <p class="text-sm text-muted-foreground">Average Rating</p>
+                        </div>
+                        <div class="text-center">
+                            <div class="w-12 h-12 bg-primary/10 rounded-lg mx-auto mb-3 flex items-center justify-center">
+                                <i class="fas fa-percentage text-primary"></i>
+                            </div>
+                            <p class="text-2xl font-bold text-foreground" data-bind="analytics.showRate">96%</p>
+                            <p class="text-sm text-muted-foreground">Show-up Rate</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Current Queue Management -->
+                    <div class="grid lg:grid-cols-2 gap-8">
+                        <!-- Active Queue -->
+                        <div>
+                            <h4 class="text-lg font-semibold text-foreground mb-4">Current Queue</h4>
+                            <div class="space-y-3">
+                                <!-- @MAP: currentQueue.map(customer => ( -->
+                                <div class="flex items-center justify-between p-4 bg-secondary rounded-lg">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-primary-foreground font-semibold">
+                                            1
+                                        </div>
+                                        <div>
+                                            <p class="font-medium text-foreground" data-bind="customer.name">Sarah Johnson</p>
+                                            <p class="text-sm text-muted-foreground" data-bind="customer.service">Haircut & Style</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex space-x-2">
+                                        <button class="bg-primary text-primary-foreground px-3 py-1 rounded text-sm hover:bg-primary/90 transition-colors duration-200">
+                                            Start Service
+                                        </button>
+                                        <button class="border border-border text-foreground px-3 py-1 rounded text-sm hover:bg-muted transition-colors duration-200">
+                                            No Show
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-center justify-between p-4 bg-secondary rounded-lg">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-10 h-10 bg-muted border-2 border-dashed border-border rounded-full flex items-center justify-center text-muted-foreground font-semibold">
+                                            2
+                                        </div>
+                                        <div>
+                                            <p class="font-medium text-foreground" data-bind="customer.name">Mike Chen</p>
+                                            <p class="text-sm text-muted-foreground" data-bind="customer.service">Beard Trim</p>
+                                        </div>
+                                    </div>
+                                    <span class="text-sm text-muted-foreground">Waiting</span>
+                                </div>
+                                
+                                <div class="flex items-center justify-between p-4 bg-secondary rounded-lg">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-10 h-10 bg-muted border-2 border-dashed border-border rounded-full flex items-center justify-center text-muted-foreground font-semibold">
+                                            3
+                                        </div>
+                                        <div>
+                                            <p class="font-medium text-foreground" data-bind="customer.name">Emily Davis</p>
+                                            <p class="text-sm text-muted-foreground" data-bind="customer.service">Color Treatment</p>
+                                        </div>
+                                    </div>
+                                    <span class="text-sm text-muted-foreground">Waiting</span>
+                                </div>
+                                <!-- @END_MAP )) -->
+                            </div>
+                        </div>
+                        
+                        <!-- Quick Actions -->
+                        <div>
+                            <h4 class="text-lg font-semibold text-foreground mb-4">Quick Actions</h4>
+                            <div class="grid grid-cols-2 gap-4">
+                                <button class="p-4 bg-secondary rounded-lg text-left hover:bg-accent transition-colors duration-200">
+                                    <div class="w-8 h-8 bg-primary/10 rounded-lg mb-2 flex items-center justify-center">
+                                        <i class="fas fa-plus text-primary"></i>
+                                    </div>
+                                    <p class="font-medium text-foreground">Add Service</p>
+                                    <p class="text-sm text-muted-foreground">Create new service</p>
+                                </button>
+                                
+                                <button class="p-4 bg-secondary rounded-lg text-left hover:bg-accent transition-colors duration-200">
+                                    <div class="w-8 h-8 bg-primary/10 rounded-lg mb-2 flex items-center justify-center">
+                                        <i class="fas fa-percentage text-primary"></i>
+                                    </div>
+                                    <p class="font-medium text-foreground">New Offer</p>
+                                    <p class="text-sm text-muted-foreground">Create promotion</p>
+                                </button>
+                                
+                                <button class="p-4 bg-secondary rounded-lg text-left hover:bg-accent transition-colors duration-200">
+                                    <div class="w-8 h-8 bg-primary/10 rounded-lg mb-2 flex items-center justify-center">
+                                        <i class="fas fa-chart-line text-primary"></i>
+                                    </div>
+                                    <p class="font-medium text-foreground">Analytics</p>
+                                    <p class="text-sm text-muted-foreground">View reports</p>
+                                </button>
+                                
+                                <button class="p-4 bg-secondary rounded-lg text-left hover:bg-accent transition-colors duration-200">
+                                    <div class="w-8 h-8 bg-primary/10 rounded-lg mb-2 flex items-center justify-center">
+                                        <i class="fas fa-cog text-primary"></i>
+                                    </div>
+                                    <p class="font-medium text-foreground">Settings</p>
+                                    <p class="text-sm text-muted-foreground">Manage salon</p>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- @END_COMPONENT: SalonOwnerDashboard -->
+
+    <!-- Features Section -->
+    <!-- @COMPONENT: FeaturesSection -->
+    <section class="py-16 gradient-pink">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl md:text-4xl font-bold text-foreground mb-4">
+                    Why Choose SmartQ?
+                </h2>
+                <p class="text-lg text-muted-foreground max-w-2xl mx-auto">
+                    Experience the future of salon visits with our innovative queue management system
+                </p>
+            </div>
+            
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Feature 1 -->
+                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 text-center">
+                    <div class="w-16 h-16 bg-primary/10 rounded-2xl mx-auto mb-6 flex items-center justify-center">
+                        <i class="fas fa-mobile-alt text-primary text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold text-foreground mb-4">Mobile-First Experience</h3>
+                    <p class="text-muted-foreground leading-relaxed">
+                        Join queues, track progress, and get notifications right from your phone. No more physical waiting.
+                    </p>
+                </div>
+                
+                <!-- Feature 2 -->
+                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 text-center">
+                    <div class="w-16 h-16 bg-primary/10 rounded-2xl mx-auto mb-6 flex items-center justify-center">
+                        <i class="fas fa-gift text-primary text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold text-foreground mb-4">Loyalty Rewards</h3>
+                    <p class="text-muted-foreground leading-relaxed">
+                        Earn points with every visit and unlock exclusive discounts and perks at your favorite salons.
+                    </p>
+                </div>
+                
+                <!-- Feature 3 -->
+                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 text-center">
+                    <div class="w-16 h-16 bg-primary/10 rounded-2xl mx-auto mb-6 flex items-center justify-center">
+                        <i class="fas fa-clock text-primary text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold text-foreground mb-4">Real-Time Updates</h3>
+                    <p class="text-muted-foreground leading-relaxed">
+                        Get accurate wait times and instant notifications when it's almost your turn.
+                    </p>
+                </div>
+                
+                <!-- Feature 4 -->
+                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 text-center">
+                    <div class="w-16 h-16 bg-primary/10 rounded-2xl mx-auto mb-6 flex items-center justify-center">
+                        <i class="fas fa-star text-primary text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold text-foreground mb-4">Review System</h3>
+                    <p class="text-muted-foreground leading-relaxed">
+                        Share your experience and discover the best salons through authentic customer reviews.
+                    </p>
+                </div>
+                
+                <!-- Feature 5 -->
+                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 text-center">
+                    <div class="w-16 h-16 bg-primary/10 rounded-2xl mx-auto mb-6 flex items-center justify-center">
+                        <i class="fas fa-chart-bar text-primary text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold text-foreground mb-4">Business Analytics</h3>
+                    <p class="text-muted-foreground leading-relaxed">
+                        Salon owners get detailed insights on customer behavior, peak hours, and revenue trends.
+                    </p>
+                </div>
+                
+                <!-- Feature 6 -->
+                <div class="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 text-center">
+                    <div class="w-16 h-16 bg-primary/10 rounded-2xl mx-auto mb-6 flex items-center justify-center">
+                        <i class="fas fa-handshake text-primary text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold text-foreground mb-4">Smart Matching</h3>
+                    <p class="text-muted-foreground leading-relaxed">
+                        Find salons based on your preferences, location, and service needs with our intelligent algorithm.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- @END_COMPONENT: FeaturesSection -->
+
+    <!-- Call to Action Section -->
+    <!-- @COMPONENT: CallToAction -->
+    <section class="py-16 bg-foreground">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 class="text-3xl md:text-4xl font-bold text-white mb-6">
+                Ready to Skip the Wait?
+            </h2>
+            <p class="text-lg text-white/80 mb-8 leading-relaxed">
+                Join thousands of satisfied customers who have revolutionized their salon experience with SmartQ.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <button class="bg-primary text-primary-foreground px-8 py-4 rounded-xl font-semibold hover:bg-primary/90 transition-all duration-200 shadow-lg hover:shadow-xl">
+                    Get Started Now
+                </button>
+                <button class="border border-white/20 text-white px-8 py-4 rounded-xl font-semibold hover:bg-white/10 transition-all duration-200">
+                    Learn More
+                </button>
+            </div>
+        </div>
+    </section>
+    <!-- @END_COMPONENT: CallToAction -->
+
+    <!-- Footer -->
+    <!-- @COMPONENT: Footer -->
+    <footer class="bg-background border-t border-border py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid md:grid-cols-4 gap-8">
+                <!-- Company Info -->
+                <div class="col-span-2 md:col-span-1">
+                    <div class="flex items-center space-x-2 mb-4">
+                        <div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                            <i class="fas fa-clock text-white text-sm"></i>
+                        </div>
+                        <span class="text-xl font-bold text-foreground">SmartQ</span>
+                    </div>
+                    <p class="text-muted-foreground mb-4 leading-relaxed">
+                        Revolutionizing salon experiences with smart queue management and real-time updates.
+                    </p>
+                    <div class="flex space-x-4">
+                        <a href="#" class="text-muted-foreground hover:text-primary transition-colors duration-200">
+                            <i class="fab fa-facebook"></i>
+                        </a>
+                        <a href="#" class="text-muted-foreground hover:text-primary transition-colors duration-200">
+                            <i class="fab fa-twitter"></i>
+                        </a>
+                        <a href="#" class="text-muted-foreground hover:text-primary transition-colors duration-200">
+                            <i class="fab fa-instagram"></i>
+                        </a>
+                        <a href="#" class="text-muted-foreground hover:text-primary transition-colors duration-200">
+                            <i class="fab fa-linkedin"></i>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Quick Links -->
+                <div>
+                    <h4 class="font-semibold text-foreground mb-4">For Customers</h4>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="text-muted-foreground hover:text-primary transition-colors duration-200">Find Salons</a></li>
+                        <li><a href="#" class="text-muted-foreground hover:text-primary transition-colors duration-200">Track Queue</a></li>
+                        <li><a href="#" class="text-muted-foreground hover:text-primary transition-colors duration-200">Loyalty Program</a></li>
+                        <li><a href="#" class="text-muted-foreground hover:text-primary transition-colors duration-200">Reviews</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Business Links -->
+                <div>
+                    <h4 class="font-semibold text-foreground mb-4">For Salons</h4>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="text-muted-foreground hover:text-primary transition-colors duration-200">Join SmartQ</a></li>
+                        <li><a href="#" class="text-muted-foreground hover:text-primary transition-colors duration-200">Dashboard</a></li>
+                        <li><a href="#" class="text-muted-foreground hover:text-primary transition-colors duration-200">Analytics</a></li>
+                        <li><a href="#" class="text-muted-foreground hover:text-primary transition-colors duration-200">Pricing</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Support Links -->
+                <div>
+                    <h4 class="font-semibold text-foreground mb-4">Support</h4>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="text-muted-foreground hover:text-primary transition-colors duration-200">Help Center</a></li>
+                        <li><a href="#" class="text-muted-foreground hover:text-primary transition-colors duration-200">Contact Us</a></li>
+                        <li><a href="#" class="text-muted-foreground hover:text-primary transition-colors duration-200">Privacy Policy</a></li>
+                        <li><a href="#" class="text-muted-foreground hover:text-primary transition-colors duration-200">Terms of Service</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="border-t border-border mt-8 pt-8 text-center">
+                <p class="text-muted-foreground">
+                    © 2024 SmartQ. All rights reserved.
+                </p>
+            </div>
+        </div>
+    </footer>
+    <!-- @END_COMPONENT: Footer -->
+
+    <script>
+        // Mock JavaScript for demonstration purposes
+        (() => {
+            // TODO: Implement real-time queue updates via WebSocket connection
+            
+            // Mock queue position updates
+            function updateQueuePosition() {
+                const positionElement = document.querySelector('[data-bind="queue.position"]');
+                const waitTimeElement = document.querySelector('[data-bind="queue.estimatedWait"]');
+                
+                if (positionElement && waitTimeElement) {
+                    // TODO: Replace with actual API calls
+                    console.log('Queue position update logic would go here');
+                }
+            }
+            
+            // Mock notification system
+            function showNotification(message, type = 'info') {
+                // TODO: Implement toast notification system
+                console.log(`Notification (${type}): ${message}`);
+            }
+            
+            // Mock search functionality
+            function handleSearch() {
+                // TODO: Implement salon search with filters
+                console.log('Search functionality would be implemented here');
+            }
+            
+            // Mock queue join functionality
+            function joinQueue(salonId, serviceId) {
+                // TODO: Implement queue joining logic with API calls
+                console.log(`Joining queue for salon ${salonId}, service ${serviceId}`);
+                showNotification('Successfully joined the queue!', 'success');
+            }
+            
+            // Add event listeners for interactive elements
+            document.addEventListener('DOMContentLoaded', function() {
+                // TODO: Add real event listeners for all interactive elements
+                console.log('SmartQ application initialized');
+            });
+            
+            // Expose functions for demo purposes
+            window.SmartQ = {
+                updateQueuePosition,
+                showNotification,
+                handleSearch,
+                joinQueue
+            };
+        })();
+    </script>
+</body>
+</html>
