@@ -915,10 +915,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'User not found or no phone number' });
       }
 
-      const success = await otpService.sendPhoneOTP(userId, user.phone, user.name);
+      const otp = await otpService.sendPhoneOTP(userId, user.phone, user.name);
       
-      if (success) {
-        res.json({ message: 'SMS OTP sent successfully' });
+      if (otp) {
+        res.json({ message: 'SMS OTP sent successfully', otp });
       } else {
         res.status(500).json({ message: 'Failed to send SMS OTP' });
       }
