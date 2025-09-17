@@ -1,6 +1,6 @@
 import { User } from './mongoStorage';
 import emailService from './emailService';
-import whatsappService from './whatsappService';
+import twilioService from './twilioService';
 
 class OTPService {
   generateOTP(): string {
@@ -40,31 +40,29 @@ class OTPService {
 
   async sendPhoneOTP(userId: string, phone: string, name: string): Promise<boolean> {
     try {
-      const otp = this.generateOTP();
-      const expiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
-
-      // Update user with phone OTP
-      await User.findOneAndUpdate(
-        { id: userId },
-        {
-          phoneOTP: otp,
-          otpExpiry: expiry,
-        }
-      );
-
-      // Try WhatsApp, but don't fail for testing
-      const whatsappSent = await whatsappService.sendOTP(phone, otp, name);
+      // Start Twilio Verify challenge (no OTP storage needed)
+      const sent = await twilioService.sendOTP(phone, name);
       
-      if (whatsappSent) {
-        console.log(`✅ WhatsApp OTP sent to ${phone}: ${otp}`);
+      if (sent) {
+        // Optionally record an expiry window for UX/rate limiting (not required for Verify)
+        const expiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+        await User.findOneAndUpdate(
+          { id: userId },
+          {
+            otpExpiry: expiry,
+            // clear any previous OTP remnants
+            phoneOTP: null,
+          }
+        );
+
+        console.log(`✅ SMS verification started for ${phone}`);
         return true;
       } else {
-        console.log(`⚠️ WhatsApp sending failed, but OTP saved for testing: ${otp}`);
-        console.log(`📱 Use this OTP for phone verification: ${otp}`);
-        return true; // Return true for testing
+        console.log('⚠️ Failed to start SMS verification with Twilio');
+        return false;
       }
     } catch (error) {
-      console.error('WhatsApp OTP service error:', error);
+      console.error('SMS OTP service error:', error);
       return false;
     }
   }
@@ -109,13 +107,15 @@ class OTPService {
     try {
       const user = await User.findOne({ id: userId });
       
-      if (!user) {
-        console.error('User not found for phone OTP verification');
+      if (!user || !user.phone) {
+        console.error('User not found or no phone number for phone OTP verification');
         return false;
       }
 
-      // Check if OTP matches and hasn't expired
-      if (user.phoneOTP === otp && user.otpExpiry && user.otpExpiry > new Date()) {
+      // Ask Twilio Verify to check the code
+      const approved = await twilioService.verifyOTP(user.phone, otp);
+
+      if (approved) {
         // Mark phone as verified
         await User.findOneAndUpdate(
           { id: userId },
@@ -129,14 +129,14 @@ class OTPService {
         // Check if both email and phone are verified
         await this.updateVerificationStatus(userId);
         
-        console.log(`Phone verified for user ${userId}`);
+        console.log(`Phone verified via Twilio Verify for user ${userId}`);
         return true;
       } else {
-        console.error('Invalid or expired phone OTP');
+        console.error('Twilio Verify rejected the code');
         return false;
       }
     } catch (error) {
-      console.error('Error verifying phone OTP:', error);
+      console.error('Error verifying phone OTP with Twilio Verify:', error);
       return false;
     }
   }

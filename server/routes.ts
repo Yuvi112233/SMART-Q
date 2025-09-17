@@ -927,9 +927,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const success = await otpService.sendPhoneOTP(userId, user.phone, user.name);
       
       if (success) {
-        res.json({ message: 'WhatsApp OTP sent successfully' });
+        res.json({ message: 'SMS OTP sent successfully' });
       } else {
-        res.status(500).json({ message: 'Failed to send WhatsApp OTP' });
+        res.status(500).json({ message: 'Failed to send SMS OTP' });
       }
     } catch (error) {
       console.error('Send phone OTP error:', error);
@@ -1015,9 +1015,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const success = await otpService.resendPhoneOTP(userId);
       
       if (success) {
-        res.json({ message: 'WhatsApp OTP resent successfully' });
+        res.json({ message: 'SMS OTP resent successfully' });
       } else {
-        res.status(500).json({ message: 'Failed to resend WhatsApp OTP' });
+        res.status(500).json({ message: 'Failed to resend SMS OTP' });
       }
     } catch (error) {
       console.error('Resend phone OTP error:', error);

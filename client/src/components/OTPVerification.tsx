@@ -72,13 +72,13 @@ export default function OTPVerification({ userId, email, phone, onVerificationCo
       if (response.ok) {
         setPhoneSent(true);
         toast({
-          title: "WhatsApp OTP Sent",
-          description: "Check your WhatsApp for the verification code.",
+          title: "SMS OTP Sent",
+          description: "Check your SMS inbox for the verification code.",
         });
       } else {
         const error = await response.json();
         toast({
-          title: "Failed to send WhatsApp OTP",
+          title: "Failed to send SMS OTP",
           description: error.message,
           variant: "destructive",
         });
@@ -86,7 +86,7 @@ export default function OTPVerification({ userId, email, phone, onVerificationCo
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to send WhatsApp OTP. Please try again.",
+        description: "Failed to send SMS OTP. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -234,8 +234,8 @@ export default function OTPVerification({ userId, email, phone, onVerificationCo
 
       if (response.ok) {
         toast({
-          title: "WhatsApp OTP Resent",
-          description: "A new verification code has been sent to your WhatsApp.",
+          title: "SMS OTP Resent",
+          description: "A new verification code has been sent via SMS.",
         });
       } else {
         const error = await response.json();
@@ -248,7 +248,7 @@ export default function OTPVerification({ userId, email, phone, onVerificationCo
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to resend WhatsApp OTP. Please try again.",
+        description: "Failed to resend SMS OTP. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -323,7 +323,7 @@ export default function OTPVerification({ userId, email, phone, onVerificationCo
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <MessageCircle className="h-5 w-5" />
-              WhatsApp Verification
+              Phone (SMS) Verification
               {phoneVerified && <Badge variant="default" className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" />Verified</Badge>}
             </CardTitle>
             <CardDescription>
@@ -334,7 +334,7 @@ export default function OTPVerification({ userId, email, phone, onVerificationCo
             {!phoneSent ? (
               <Button onClick={sendPhoneOTP} disabled={loading || phoneVerified} className="w-full">
                 {loading ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <MessageCircle className="h-4 w-4 mr-2" />}
-                Send WhatsApp OTP
+                Send SMS OTP
               </Button>
             ) : !phoneVerified ? (
               <div className="space-y-3">
@@ -349,7 +349,7 @@ export default function OTPVerification({ userId, email, phone, onVerificationCo
                 <div className="flex gap-2">
                   <Button onClick={verifyPhoneOTP} disabled={loading || phoneOTP.length !== 6} className="flex-1">
                     {loading ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}
-                    Verify WhatsApp
+                    Verify Phone
                   </Button>
                   <Button 
                     variant="outline" 
