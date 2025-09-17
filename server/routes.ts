@@ -136,10 +136,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create user with verification fields
-      const hashedPassword = await bcrypt.hash(userData.password, 10);
       const user = await storage.createUser({
         ...userData,
-        password: hashedPassword,
         emailVerified: false,
         phoneVerified: false,
         isVerified: false,
@@ -375,14 +373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updates = insertSalonSchema.partial().parse(req.body);
-      // Ensure proper typing for the updates
-      const typedUpdates: Partial<Salon> = {
-        ...updates,
-        description: updates.description || null,
-        operatingHours: updates.operatingHours as Salon['operatingHours'] || null,
-        images: updates.images as string[] || null,
-      };
-      const updatedSalon = await storage.updateSalon(req.params.id, typedUpdates);
+      const updatedSalon = await storage.updateSalon(req.params.id, updates);
       res.json(updatedSalon);
     } catch (error) {
       res.status(400).json({ message: 'Invalid update data', error });
