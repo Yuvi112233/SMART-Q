@@ -624,6 +624,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: 'Server error', error });
     }
   });
+  
+  // Public endpoint to get offers for a salon - no authentication required
+  app.get('/api/salons/:salonId/public-offers', async (req, res) => {
+    try {
+      const salonId = req.params.salonId;
+      console.log('Fetching offers for salon:', salonId);
+      
+      const salon = await storage.getSalon(salonId);
+      
+      if (!salon) {
+        return res.status(404).json({ message: 'Salon not found' });
+      }
+      
+      const offers = await storage.getOffersBySalon(salonId);
+      console.log('Found offers for salon:', offers);
+      
+      // Only return active offers with valid dates
+      const now = new Date();
+      const activeOffers = offers.filter(offer => offer.isActive && new Date(offer.validityPeriod) > now);
+      console.log('Active offers after filtering:', activeOffers);
+      
+      res.json(activeOffers);
+    } catch (error) {
+      console.error('Error fetching salon offers:', error);
+      res.status(500).json({ message: 'Server error', error: error.message });
+    }
+  });
 
   app.post('/api/offers', authenticateToken, async (req, res) => {
     try {

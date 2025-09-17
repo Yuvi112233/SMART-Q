@@ -93,6 +93,21 @@ export const api = {
       return response.json();
     },
     
+    getBySalon: async (salonId: string) => {
+      // Use fetch directly without authentication for this public endpoint
+      const response = await fetch(`/api/salons/${salonId}/public-offers`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`${response.status}: ${text}`);
+      }
+      return response.json();
+    },
+    
     create: async (offerData: InsertOffer) => {
       const response = await apiRequest('POST', '/api/offers', offerData);
       return response.json();
