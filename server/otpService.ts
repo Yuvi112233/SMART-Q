@@ -38,8 +38,24 @@ class OTPService {
     }
   }
 
-  async sendPhoneOTP(userId: string, phone: string, name: string): Promise<boolean> {
+  async sendPhoneOTP(userId: string, phone: string, name: string): Promise<string | false> {
     try {
+      // For testing: generate OTP and log it instead of sending SMS
+      const otp = this.generateOTP();
+      const expiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+
+      await User.findOneAndUpdate(
+        { id: userId },
+        {
+          phoneOTP: otp,
+          otpExpiry: expiry,
+        }
+      );
+
+      console.log(`📱 Use this OTP for phone verification: ${otp}`);
+      return otp;
+
+      /*
       // Start Twilio Verify challenge (no OTP storage needed)
       const sent = await twilioService.sendOTP(phone, name);
       
@@ -61,6 +77,7 @@ class OTPService {
         console.log('⚠️ Failed to start SMS verification with Twilio');
         return false;
       }
+      */
     } catch (error) {
       console.error('SMS OTP service error:', error);
       return false;
@@ -107,11 +124,32 @@ class OTPService {
     try {
       const user = await User.findOne({ id: userId });
       
-      if (!user || !user.phone) {
-        console.error('User not found or no phone number for phone OTP verification');
+      if (!user) {
+        console.error('User not found for phone OTP verification');
         return false;
       }
 
+      // For testing: check OTP from DB
+      if (user.phoneOTP === otp && user.otpExpiry && user.otpExpiry > new Date()) {
+        await User.findOneAndUpdate(
+          { id: userId },
+          {
+            phoneVerified: true,
+            phoneOTP: null,
+            otpExpiry: null,
+          }
+        );
+
+        await this.updateVerificationStatus(userId);
+        
+        console.log(`Phone verified for user ${userId}`);
+        return true;
+      } else {
+        console.error('Invalid or expired phone OTP');
+        return false;
+      }
+
+      /*
       // Ask Twilio Verify to check the code
       const approved = await twilioService.verifyOTP(user.phone, otp);
 
@@ -135,6 +173,7 @@ class OTPService {
         console.error('Twilio Verify rejected the code');
         return false;
       }
+      */
     } catch (error) {
       console.error('Error verifying phone OTP with Twilio Verify:', error);
       return false;
@@ -182,7 +221,8 @@ class OTPService {
         return false;
       }
 
-      return await this.sendPhoneOTP(userId, user.phone, user.name);
+      const result = await this.sendPhoneOTP(userId, user.phone, user.name);
+      return !!result;
     } catch (error) {
       console.error('Error resending phone OTP:', error);
       return false;

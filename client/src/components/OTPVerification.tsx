@@ -20,6 +20,7 @@ export default function OTPVerification({ userId, email, phone, onVerificationCo
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [phoneSent, setPhoneSent] = useState(false);
+  const [displayedPhoneOTP, setDisplayedPhoneOTP] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState({ email: false, phone: false });
   const { toast } = useToast();
@@ -70,7 +71,9 @@ export default function OTPVerification({ userId, email, phone, onVerificationCo
       });
 
       if (response.ok) {
+        const data = await response.json();
         setPhoneSent(true);
+        setDisplayedPhoneOTP(data.otp);
         toast({
           title: "SMS OTP Sent",
           description: "Check your SMS inbox for the verification code.",
@@ -346,6 +349,11 @@ export default function OTPVerification({ userId, email, phone, onVerificationCo
                   maxLength={6}
                   className="text-center text-lg tracking-widest"
                 />
+                {displayedPhoneOTP && (
+                  <p className="text-center text-sm text-gray-500">
+                    Your OTP is: {displayedPhoneOTP}
+                  </p>
+                )}
                 <div className="flex gap-2">
                   <Button onClick={verifyPhoneOTP} disabled={loading || phoneOTP.length !== 6} className="flex-1">
                     {loading ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}
