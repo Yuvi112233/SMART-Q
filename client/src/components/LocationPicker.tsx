@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,10 @@ export default function LocationPicker({ onLocationSelect, initialLocation }: Lo
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [accuracy, setAccuracy] = useState<number | null>(null);
+  const watchIdRef = useRef<number | null>(null);
+  const bestAccuracyRef = useRef<number | null>(null);
+  const bestCoordsRef = useRef<{ latitude: number; longitude: number } | null>(null);
 
   // Reverse geocoding using free Nominatim API
   const reverseGeocode = async (lat: number, lng: number) => {
@@ -73,15 +77,27 @@ export default function LocationPicker({ onLocationSelect, initialLocation }: Lo
     }
   };
 
-  // Get user's current location
+  // Stop any ongoing watch
+  const stopWatching = () => {
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => stopWatching();
+  }, []);
+
+  // Get user's current location (single fix, fast)
   const getCurrentLocation = () => {
     setIsLoading(true);
+    stopWatching();
     navigator.geolocation.getCurrentPosition(
       async (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        const newCoords = { latitude: lat, longitude: lng };
-        setCoordinates(newCoords);
+        const { latitude: lat, longitude: lng, accuracy: acc } = position.coords;
+        setCoordinates({ latitude: lat, longitude: lng });
+        setAccuracy(typeof acc === 'number' ? Math.round(acc) : null);
         const addr = await reverseGeocode(lat, lng);
         onLocationSelect({
           latitude: lat,
@@ -96,8 +112,68 @@ export default function LocationPicker({ onLocationSelect, initialLocation }: Lo
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
+        timeout: 15000,
+        maximumAge: 0,
+      }
+    );
+  };
+
+  // Continuously refine location to reach pinpoint accuracy
+  const getPinpointLocation = () => {
+    setIsLoading(true);
+    setAccuracy(null);
+    bestAccuracyRef.current = null;
+    bestCoordsRef.current = null;
+
+    // Auto-stop after 20s if we can't get a better fix
+    const abortTimeout = setTimeout(() => {
+      stopWatching();
+      setIsLoading(false);
+      if (bestCoordsRef.current) {
+        setCoordinates(bestCoordsRef.current);
+      }
+    }, 20000);
+
+    stopWatching();
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      async (position) => {
+        const { latitude: lat, longitude: lng, accuracy: acc } = position.coords;
+        const roundedAcc = typeof acc === 'number' ? Math.round(acc) : null;
+        setCoordinates({ latitude: lat, longitude: lng });
+        if (roundedAcc !== null) setAccuracy(roundedAcc);
+
+        // Track best fix
+        if (
+          roundedAcc !== null &&
+          (bestAccuracyRef.current === null || roundedAcc < bestAccuracyRef.current)
+        ) {
+          bestAccuracyRef.current = roundedAcc;
+          bestCoordsRef.current = { latitude: lat, longitude: lng };
+        }
+
+        // If accuracy is good enough, stop early
+        if (roundedAcc !== null && roundedAcc <= 20) {
+          stopWatching();
+          clearTimeout(abortTimeout);
+          setIsLoading(false);
+          const addr = await reverseGeocode(lat, lng);
+          onLocationSelect({
+            latitude: lat,
+            longitude: lng,
+            address: addr || `Current Location (${lat.toFixed(6)}, ${lng.toFixed(6)})`
+          });
+        }
+      },
+      (error) => {
+        console.error("Geolocation watch failed:", error);
+        stopWatching();
+        clearTimeout(abortTimeout);
+        setIsLoading(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 20000,
+        maximumAge: 0,
       }
     );
   };
@@ -144,15 +220,26 @@ export default function LocationPicker({ onLocationSelect, initialLocation }: Lo
               </div>
             </div>
 
-            <Button 
-              onClick={getCurrentLocation} 
-              disabled={isLoading}
-              variant="outline"
-              className="w-full"
-            >
-              <Navigation className="h-4 w-4 mr-2" />
-              Use Current Location
-            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button 
+                onClick={getCurrentLocation} 
+                disabled={isLoading}
+                variant="outline"
+                className="w-full"
+              >
+                <Navigation className="h-4 w-4 mr-2" />
+                Get Location
+              </Button>
+              <Button 
+                onClick={getPinpointLocation} 
+                disabled={isLoading}
+                variant="default"
+                className="w-full"
+              >
+                <Navigation className="h-4 w-4 mr-2" />
+                Pinpoint (GPS)
+              </Button>
+            </div>
 
             {/* Selected Location Display */}
             {address && (
@@ -173,6 +260,9 @@ export default function LocationPicker({ onLocationSelect, initialLocation }: Lo
                 <p className="text-xs text-gray-500 mt-1">
                   {coordinates.latitude.toFixed(4)}, {coordinates.longitude.toFixed(4)}
                 </p>
+                {accuracy !== null && (
+                  <p className="text-xs text-gray-500 mt-1">Accuracy: ±{accuracy} m</p>
+                )}
               </div>
             )}
 

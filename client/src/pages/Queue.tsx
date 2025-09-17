@@ -201,11 +201,18 @@ export default function Queue() {
                             <div>
                               <h4 className="font-semibold text-foreground mb-2">Service Details</h4>
                               <div className="space-y-2">
-                                {queue.serviceIds && queue.serviceIds.length > 1 ? (
+                                {queue.services && Array.isArray(queue.services) && queue.services.length > 0 ? (
                                   <div>
                                     <p className="text-foreground" data-testid={`text-services-count-${queue.id}`}>
-                                      <strong>Services:</strong> {queue.serviceIds.length} selected
+                                      <strong>Services:</strong> {queue.services.length} selected
                                     </p>
+                                    <div className="mt-1 mb-1" data-testid={`text-services-list-${queue.id}`}>
+                                      {queue.services.map((service) => (
+                                        <p key={service.id} className="text-sm text-muted-foreground">
+                                          - {service.name} (${service.price})
+                                        </p>
+                                      ))}
+                                    </div>
                                     <p className="text-muted-foreground" data-testid={`text-total-price-${queue.id}`}>
                                       <strong>Total Price:</strong> ${queue.totalPrice}
                                     </p>
@@ -289,7 +296,11 @@ export default function Queue() {
                               {queue.salon?.name}
                             </h4>
                             <p className="text-sm text-muted-foreground" data-testid={`text-history-service-${queue.id}`}>
-                              {queue.service?.name} • {new Date(queue.timestamp).toLocaleDateString()}
+                              {queue.services && queue.services.length > 0 ? 
+                                (queue.services.length > 1 ? 
+                                  `${queue.services.length} services` : 
+                                  queue.services[0].name) : 
+                                queue.service?.name} • {new Date(queue.timestamp).toLocaleDateString()}
                             </p>
                           </div>
                           <div className="text-right">

@@ -415,7 +415,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const queuesWithDetails = await Promise.all(
         queues.map(async (queue) => {
           const salon = await storage.getSalon(queue.salonId);
-          const service = await storage.getService(queue.serviceId);
+          
+          // Fetch all services for the queue
+          let services = [];
+          if (queue.serviceIds && queue.serviceIds.length > 0) {
+            const servicePromises = queue.serviceIds.map(async (serviceId) => {
+              const service = await storage.getService(serviceId);
+              return service; // Only add if service exists
+            });
+            services = (await Promise.all(servicePromises)).filter(Boolean);
+          }
+          
+          // For backward compatibility
+          const service = queue.serviceId ? await storage.getService(queue.serviceId) : null;
+          
           const salonQueues = await storage.getQueuesBySalon(queue.salonId);
           // Waiting list should be sorted by position ascending, which getQueuesBySalon does.
           const waitingQueues = salonQueues.filter(q => q.status === 'waiting');
@@ -430,13 +443,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
             userPosition = 0; // Indicates "in progress"
           }
           
-          return {
+          // Ensure we have a valid services array
+          const queueWithDetails = {
             ...queue,
             position: userPosition,
             salon,
-            service,
+            service, // Keep for backward compatibility
+            services: services.length > 0 ? services : undefined, // Add all services if available
             totalInQueue: waitingQueues.length,
           };
+          
+          // For debugging
+          console.log(`Queue ${queue.id} services:`, services);
+          
+          return queueWithDetails;
         })
       );
 
@@ -463,12 +483,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const queuesWithDetails = await Promise.all(
         queues.map(async (queue) => {
           const user = await storage.getUser(queue.userId);
-          const service = await storage.getService(queue.serviceId);
-          return {
+          
+          // Fetch all services for the queue
+          let services = [];
+          if (queue.serviceIds && queue.serviceIds.length > 0) {
+            const servicePromises = queue.serviceIds.map(async (serviceId) => {
+              const service = await storage.getService(serviceId);
+              return service; // Only add if service exists
+            });
+            services = (await Promise.all(servicePromises)).filter(Boolean);
+          }
+          
+          // For backward compatibility
+          const service = queue.serviceId ? await storage.getService(queue.serviceId) : null;
+          
+          // Ensure we have a valid services array
+          const queueWithDetails = {
             ...queue,
             user: user ? { ...user, password: undefined } : null,
-            service,
+            service, // Keep for backward compatibility
+            services: services.length > 0 ? services : undefined, // Add all services if available
           };
+          
+          // For debugging
+          console.log(`Salon queue ${queue.id} services:`, services);
+          
+          return queueWithDetails;
         })
       );
 

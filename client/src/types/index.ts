@@ -33,6 +33,7 @@ export interface SalonDetails extends Salon {
 export interface QueueWithDetails extends Queue {
   salon: Salon | null;
   service: Service | null;
+  services?: Service[];
   user?: User | null;
   totalInQueue?: number;
 }
