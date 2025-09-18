@@ -1,8 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { MapPin, Navigation, Search, ExternalLink } from "lucide-react";
+import { GoogleMap, useLoadScript, MarkerF } from "@react-google-maps/api";
+
+const libraries: ("places")[] = ["places"];
 
 interface LocationData {
   latitude: number;
@@ -25,158 +28,197 @@ export default function LocationPicker({ onLocationSelect, initialLocation }: Lo
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [accuracy, setAccuracy] = useState<number | null>(null);
-  const watchIdRef = useRef<number | null>(null);
-  const bestAccuracyRef = useRef<number | null>(null);
-  const bestCoordsRef = useRef<{ latitude: number; longitude: number } | null>(null);
+  const [hasAutoLocated, setHasAutoLocated] = useState(false);
 
-  // Reverse geocoding using free Nominatim API
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const geocoderRef = useRef<google.maps.Geocoder | null>(null);
+
+  const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+
+  const { isLoaded, loadError } = useLoadScript({
+    googleMapsApiKey: googleMapsApiKey,
+    libraries,
+  });
+
+  const onMapLoad = useCallback((map: google.maps.Map) => {
+    mapRef.current = map;
+    geocoderRef.current = new google.maps.Geocoder();
+  }, []);
+
+  const onMapUnmount = useCallback(() => {
+    mapRef.current = null;
+    geocoderRef.current = null;
+  }, []);
+
   const reverseGeocode = async (lat: number, lng: number) => {
+    if (!geocoderRef.current) return "";
+    setIsLoading(true);
     try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`
-      );
-      const data = await response.json();
-      if (data.display_name) {
-        setAddress(data.display_name);
-        return data.display_name;
+      const response = await geocoderRef.current.geocode({ location: { lat, lng } });
+      if (response.results && response.results.length > 0) {
+        const newAddress = response.results[0].formatted_address;
+        setAddress(newAddress);
+        onLocationSelect({ latitude: lat, longitude: lng, address: newAddress });
+        return newAddress;
       }
     } catch (error) {
-      console.error("Reverse geocoding failed:", error);
+      console.error("Google Maps Reverse geocoding failed:", error);
+    } finally {
+      setIsLoading(false);
     }
     return "";
   };
 
-  // Forward geocoding using free Nominatim API
   const searchLocation = async () => {
-    if (!searchQuery.trim()) return;
-    
+    if (!searchQuery.trim() || !geocoderRef.current) return;
+
     setIsLoading(true);
     try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=1&addressdetails=1`
-      );
-      const data = await response.json();
-      
-      if (data.length > 0) {
-        const result = data[0];
-        const lat = parseFloat(result.lat);
-        const lng = parseFloat(result.lon);
+      const response = await geocoderRef.current.geocode({ address: searchQuery });
+      if (response.results && response.results.length > 0) {
+        const result = response.results[0];
+        const lat = result.geometry.location.lat();
+        const lng = result.geometry.location.lng();
         const newCoords = { latitude: lat, longitude: lng };
         setCoordinates(newCoords);
-        setAddress(result.display_name);
+        setAddress(result.formatted_address);
         onLocationSelect({
           latitude: lat,
           longitude: lng,
-          address: result.display_name
+          address: result.formatted_address
         });
+        mapRef.current?.panTo({ lat, lng });
       }
     } catch (error) {
-      console.error("Search failed:", error);
+      console.error("Google Maps Search failed:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Stop any ongoing watch
-  const stopWatching = () => {
-    if (watchIdRef.current !== null) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
-      watchIdRef.current = null;
-    }
-  };
-
-  useEffect(() => {
-    return () => stopWatching();
-  }, []);
-
-  // Get user's current location (single fix, fast)
-  const getCurrentLocation = () => {
+  // Get user's current location with high accuracy
+  const getCurrentLocation = useCallback((isAutomatic = false) => {
     setIsLoading(true);
-    stopWatching();
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude: lat, longitude: lng, accuracy: acc } = position.coords;
+    setAccuracy(null);
+
+    if (!navigator.geolocation) {
+      console.error("Geolocation is not supported by this browser.");
+      setIsLoading(false);
+      return;
+    }
+
+    let bestPosition: GeolocationPosition | null = null;
+    let watchId: number | null = null;
+    let timeoutId: NodeJS.Timeout;
+
+    const processPosition = async (position: GeolocationPosition) => {
+      const { latitude: lat, longitude: lng, accuracy: acc } = position.coords;
+      const roundedAcc = typeof acc === 'number' ? Math.round(acc) : null;
+
+      // If this is the first position or it's more accurate than the previous one
+      if (!bestPosition || (acc && bestPosition.coords.accuracy && acc < bestPosition.coords.accuracy)) {
+        bestPosition = position;
+
         setCoordinates({ latitude: lat, longitude: lng });
-        setAccuracy(typeof acc === 'number' ? Math.round(acc) : null);
+        if (roundedAcc !== null) setAccuracy(roundedAcc);
+
         const addr = await reverseGeocode(lat, lng);
         onLocationSelect({
           latitude: lat,
           longitude: lng,
           address: addr || `Current Location (${lat.toFixed(6)}, ${lng.toFixed(6)})`
         });
-        setIsLoading(false);
+
+        // Adjust zoom based on accuracy
+        const zoom = acc ? Math.max(15, Math.min(20, 20 - Math.log10(acc))) : 15;
+        mapRef.current?.panTo({ lat, lng });
+        mapRef.current?.setZoom(zoom);
+
+        // If accuracy is good enough (less than 20m), stop watching
+        if (acc && acc < 20) {
+          if (watchId !== null) {
+            navigator.geolocation.clearWatch(watchId);
+            watchId = null;
+          }
+          clearTimeout(timeoutId);
+
+          if (isAutomatic) {
+            setHasAutoLocated(true);
+          }
+          setIsLoading(false);
+        }
+      }
+    };
+
+    const handleError = (error: GeolocationPositionError) => {
+      console.error("Geolocation failed:", error);
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+      clearTimeout(timeoutId);
+      setIsLoading(false);
+    };
+
+    // First, try to get a quick position
+    navigator.geolocation.getCurrentPosition(
+      processPosition,
+      () => {
+        // If quick position fails, start watching for high accuracy
+        watchId = navigator.geolocation.watchPosition(
+          processPosition,
+          handleError,
+          {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: isAutomatic ? 300000 : 0, // Cache for auto requests, fresh for manual
+          }
+        );
       },
-      (error) => {
-        console.error("Geolocation failed:", error);
-        setIsLoading(false);
-      },
+      {
+        enableHighAccuracy: false, // Quick first attempt
+        timeout: 5000,
+        maximumAge: isAutomatic ? 300000 : 60000,
+      }
+    );
+
+    // Start high-accuracy watching immediately for better results
+    watchId = navigator.geolocation.watchPosition(
+      processPosition,
+      handleError,
       {
         enableHighAccuracy: true,
         timeout: 15000,
-        maximumAge: 0,
+        maximumAge: isAutomatic ? 300000 : 0,
       }
     );
-  };
 
-  // Continuously refine location to reach pinpoint accuracy
-  const getPinpointLocation = () => {
-    setIsLoading(true);
-    setAccuracy(null);
-    bestAccuracyRef.current = null;
-    bestCoordsRef.current = null;
+    // Set a maximum time limit for location detection
+    timeoutId = setTimeout(() => {
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+      }
 
-    // Auto-stop after 20s if we can't get a better fix
-    const abortTimeout = setTimeout(() => {
-      stopWatching();
+      if (isAutomatic) {
+        setHasAutoLocated(true);
+      }
       setIsLoading(false);
-      if (bestCoordsRef.current) {
-        setCoordinates(bestCoordsRef.current);
-      }
-    }, 20000);
+    }, 20000); // 20 seconds max
 
-    stopWatching();
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      async (position) => {
-        const { latitude: lat, longitude: lng, accuracy: acc } = position.coords;
-        const roundedAcc = typeof acc === 'number' ? Math.round(acc) : null;
-        setCoordinates({ latitude: lat, longitude: lng });
-        if (roundedAcc !== null) setAccuracy(roundedAcc);
+  }, [onLocationSelect, reverseGeocode]);
 
-        // Track best fix
-        if (
-          roundedAcc !== null &&
-          (bestAccuracyRef.current === null || roundedAcc < bestAccuracyRef.current)
-        ) {
-          bestAccuracyRef.current = roundedAcc;
-          bestCoordsRef.current = { latitude: lat, longitude: lng };
-        }
+  // Auto-detect location when component mounts or when no initial location is provided
+  useEffect(() => {
+    if (isLoaded && !initialLocation && !hasAutoLocated) {
+      getCurrentLocation(true);
+    }
+  }, [isLoaded, initialLocation, hasAutoLocated, getCurrentLocation]);
 
-        // If accuracy is good enough, stop early
-        if (roundedAcc !== null && roundedAcc <= 20) {
-          stopWatching();
-          clearTimeout(abortTimeout);
-          setIsLoading(false);
-          const addr = await reverseGeocode(lat, lng);
-          onLocationSelect({
-            latitude: lat,
-            longitude: lng,
-            address: addr || `Current Location (${lat.toFixed(6)}, ${lng.toFixed(6)})`
-          });
-        }
-      },
-      (error) => {
-        console.error("Geolocation watch failed:", error);
-        stopWatching();
-        clearTimeout(abortTimeout);
-        setIsLoading(false);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 20000,
-        maximumAge: 0,
-      }
-    );
-  };
+  // Auto-detect location when dialog opens if no location is set
+  useEffect(() => {
+    if (isOpen && !address && !hasAutoLocated && isLoaded) {
+      getCurrentLocation(true);
+    }
+  }, [isOpen, address, hasAutoLocated, isLoaded, getCurrentLocation]);
 
   // Open in Google Maps for verification
   const openInGoogleMaps = () => {
@@ -184,13 +226,16 @@ export default function LocationPicker({ onLocationSelect, initialLocation }: Lo
     window.open(url, '_blank');
   };
 
+  if (loadError) return <div>Error loading maps</div>;
+  if (!isLoaded) return <div>Loading Maps...</div>;
+
   return (
     <div className="space-y-2">
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogTrigger asChild>
-          <Button variant="outline" className="w-full justify-start text-sm h-9">
+          <Button variant="outline" className="w-full justify-start text-sm h-9" disabled={isLoading}>
             <MapPin className="h-4 w-4 mr-2" />
-            {address ? "Change Location" : "Select Salon Location"}
+            {isLoading ? "Detecting location..." : address ? "Change Location" : "Select Salon Location"}
           </Button>
         </DialogTrigger>
         <DialogContent className="sm:max-w-md">
@@ -208,10 +253,10 @@ export default function LocationPicker({ onLocationSelect, initialLocation }: Lo
                   placeholder="Search address..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && searchLocation()}
+                  onKeyDown={(e) => e.key === 'Enter' && searchLocation()}
                 />
-                <Button 
-                  onClick={searchLocation} 
+                <Button
+                  onClick={searchLocation}
                   disabled={isLoading}
                   size="sm"
                 >
@@ -221,24 +266,67 @@ export default function LocationPicker({ onLocationSelect, initialLocation }: Lo
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-              <Button 
-                onClick={getCurrentLocation} 
+              <Button
+                onClick={() => getCurrentLocation(false)}
                 disabled={isLoading}
                 variant="outline"
                 className="w-full"
               >
                 <Navigation className="h-4 w-4 mr-2" />
-                Get Location
+                {hasAutoLocated ? "Update Location" : "Get Location"}
               </Button>
-              <Button 
-                onClick={getPinpointLocation} 
-                disabled={isLoading}
-                variant="default"
-                className="w-full"
+              {accuracy && accuracy > 30 && (
+                <Button
+                  onClick={() => {
+                    setHasAutoLocated(false);
+                    getCurrentLocation(false);
+                  }}
+                  disabled={isLoading}
+                  variant="outline"
+                  className="w-full text-xs"
+                >
+                  <Navigation className="h-3 w-3 mr-1" />
+                  Precise Location
+                </Button>
+              )}
+            </div>
+
+            {accuracy && accuracy > 50 && (
+              <div className="p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800">
+                💡 For better accuracy: Move to an open area, enable location services, and ensure GPS is on.
+              </div>
+            )}
+
+            <div className="h-64 w-full rounded-md overflow-hidden">
+              <GoogleMap
+                mapContainerStyle={{ width: "100%", height: "100%" }}
+                center={{ lat: coordinates.latitude, lng: coordinates.longitude }}
+                zoom={15}
+                onLoad={onMapLoad}
+                onUnmount={onMapUnmount}
+                onClick={(e) => {
+                  if (e.latLng) {
+                    const lat = e.latLng.lat();
+                    const lng = e.latLng.lng();
+                    setCoordinates({ latitude: lat, longitude: lng });
+                    reverseGeocode(lat, lng);
+
+                  }
+                }}
               >
-                <Navigation className="h-4 w-4 mr-2" />
-                Pinpoint (GPS)
-              </Button>
+                <MarkerF
+                  position={{ lat: coordinates.latitude, lng: coordinates.longitude }}
+                  draggable={true}
+                  onDragEnd={(e) => {
+                    if (e.latLng) {
+                      const lat = e.latLng.lat();
+                      const lng = e.latLng.lng();
+                      setCoordinates({ latitude: lat, longitude: lng });
+                      reverseGeocode(lat, lng);
+                    }
+                  }}
+                />
+              </GoogleMap>
             </div>
 
             {/* Selected Location Display */}
@@ -261,13 +349,27 @@ export default function LocationPicker({ onLocationSelect, initialLocation }: Lo
                   {coordinates.latitude.toFixed(4)}, {coordinates.longitude.toFixed(4)}
                 </p>
                 {accuracy !== null && (
-                  <p className="text-xs text-gray-500 mt-1">Accuracy: ±{accuracy} m</p>
+                  <div className="mt-1">
+                    <p className="text-xs text-gray-500">
+                      Accuracy: ±{accuracy} m
+                      {accuracy > 50 && (
+                        <span className="text-amber-600 ml-1">
+                          (Move to open area for better accuracy)
+                        </span>
+                      )}
+                      {accuracy <= 20 && (
+                        <span className="text-green-600 ml-1">
+                          (High accuracy)
+                        </span>
+                      )}
+                    </p>
+                  </div>
                 )}
               </div>
             )}
 
-            <Button 
-              onClick={() => setIsOpen(false)} 
+            <Button
+              onClick={() => setIsOpen(false)}
               className="w-full"
               disabled={!address}
             >
