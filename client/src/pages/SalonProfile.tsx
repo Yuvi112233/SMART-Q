@@ -5,12 +5,12 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Star, MapPin, Clock, Users, Tag, Heart, Plus, ShoppingCart, ChevronLeft, ChevronRight, ImageIcon } from "lucide-react";
+import { Star, MapPin, Clock, Users, Tag, Heart, Plus, ShoppingCart, ChevronLeft, ChevronRight, ImageIcon, Percent } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
@@ -126,6 +126,13 @@ export default function SalonProfile() {
       }
       return response.json();
     },
+    enabled: !!id,
+  });
+  
+  // Fetch salon offers
+  const { data: offers = [], isLoading: offersLoading } = useQuery({
+    queryKey: ['salon-offers', id],
+    queryFn: () => api.offers.getBySalon(id!),
     enabled: !!id,
   });
 
@@ -398,6 +405,70 @@ export default function SalonProfile() {
             </div>
           )}
         </div>
+
+        {/* Offers Section */}
+        <Card className="mt-8 mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Tag className="h-5 w-5" />
+              <span>Available Offers</span>
+            </CardTitle>
+            <CardDescription>
+              Special promotions and discounts for this salon
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {offersLoading ? (
+              <div className="text-center py-4">
+                <p className="text-gray-500">Loading offers...</p>
+              </div>
+            ) : offers.length > 0 ? (
+              <div className="space-y-3">
+                {offers.map((offer) => (
+                  <div key={offer.id} className="flex items-center justify-between p-4 border rounded-xl hover:bg-gray-50 transition-colors">
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-800">{offer.title}</h4>
+                      <p className="text-sm text-gray-600">{offer.description}</p>
+                      <div className="flex items-center mt-2 space-x-4">
+                        <Badge variant="secondary" className="bg-primary/10 text-primary">
+                          {offer.discount}% OFF
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          Valid until {new Date(offer.validityPeriod).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (getItemCount() > 0) {
+                          setLocation('/queue-summary');
+                        } else {
+                          toast({
+                            title: "Add services first",
+                            description: "Please add services to your cart before applying an offer.",
+                          });
+                        }
+                      }}
+                      className="whitespace-nowrap"
+                      data-testid={`button-apply-offer-${offer.id}`}
+                    >
+                      Apply Offer
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Percent className="w-8 h-8 text-gray-400" />
+                </div>
+                <p className="text-gray-500">No offers available for this salon</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Reviews Section */}
         <Card className="mt-8">

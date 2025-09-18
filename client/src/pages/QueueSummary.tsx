@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,23 +17,15 @@ export default function QueueSummary() {
   const { toast } = useToast();
   const [selectedOffer, setSelectedOffer] = useState<any>(null);
 
-  // Mock offers - in real app, these would come from the salon data
-  const availableOffers = [
-    {
-      id: "offer1",
-      title: "First Time Customer",
-      description: "10% off for new customers",
-      discount: 10,
-      isActive: true,
+  // Fetch offers for the salon
+  const { data: availableOffers = [], isLoading: offersLoading } = useQuery({
+    queryKey: ['salonOffers', items[0]?.salonId],
+    queryFn: () => {
+      if (!items[0]?.salonId) return [];
+      return api.offers.getBySalon(items[0].salonId);
     },
-    {
-      id: "offer2", 
-      title: "Weekend Special",
-      description: "15% off on weekend bookings",
-      discount: 15,
-      isActive: true,
-    }
-  ];
+    enabled: !!items[0]?.salonId,
+  });
 
   const subtotal = getTotalPrice();
   const discountAmount = selectedOffer ? (subtotal * selectedOffer.discount) / 100 : 0;
@@ -165,26 +157,36 @@ export default function QueueSummary() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
-              {availableOffers.map((offer) => (
-                <div key={offer.id} className="flex items-center justify-between p-4 border rounded-xl hover:bg-gray-50 transition-colors">
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-gray-800">{offer.title}</h4>
-                    <p className="text-sm text-gray-600">{offer.description}</p>
-                    <Badge variant="secondary" className="mt-1">
-                      {offer.discount}% OFF
-                    </Badge>
+            {offersLoading ? (
+              <div className="text-center py-4">
+                <p className="text-gray-500">Loading offers...</p>
+              </div>
+            ) : availableOffers.length > 0 ? (
+              <div className="space-y-3">
+                {availableOffers.map((offer) => (
+                  <div key={offer.id} className="flex items-center justify-between p-4 border rounded-xl hover:bg-gray-50 transition-colors">
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-800">{offer.title}</h4>
+                      <p className="text-sm text-gray-600">{offer.description}</p>
+                      <Badge variant="secondary" className="mt-1">
+                        {offer.discount}% OFF
+                      </Badge>
+                    </div>
+                    <Button
+                      variant={selectedOffer?.id === offer.id ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handleApplyOffer(offer)}
+                    >
+                      {selectedOffer?.id === offer.id ? "Applied" : "Apply"}
+                    </Button>
                   </div>
-                  <Button
-                    variant={selectedOffer?.id === offer.id ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => handleApplyOffer(offer)}
-                  >
-                    {selectedOffer?.id === offer.id ? "Applied" : "Apply"}
-                  </Button>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-4">
+                <p className="text-gray-500">No offers available for this salon</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 

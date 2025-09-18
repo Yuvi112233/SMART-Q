@@ -1075,7 +1075,22 @@ export default function Dashboard() {
                                               {...field}
                                               min={new Date().toISOString().split('T')[0]}
                                               value={field.value instanceof Date ? field.value.toISOString().split('T')[0] : ''}
-                                              onChange={(e) => field.onChange(new Date(e.target.value))}
+                                              onChange={(e) => {
+                                                const selectedDate = new Date(e.target.value);
+                                                const today = new Date();
+                                                today.setHours(0, 0, 0, 0);
+                                                
+                                                if (selectedDate < today) {
+                                                  toast({
+                                                    title: "Invalid date",
+                                                    description: "Please select a future date",
+                                                    variant: "destructive"
+                                                  });
+                                                  return;
+                                                }
+                                                
+                                                field.onChange(selectedDate);
+                                              }}
                                               data-testid="input-offer-validity"
                                             />
                                           </FormControl>
