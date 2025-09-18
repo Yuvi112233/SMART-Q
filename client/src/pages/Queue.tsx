@@ -1,7 +1,8 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Clock, Star, AlertCircle, Navigation } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -16,6 +17,7 @@ export default function Queue() {
   const { toast } = useToast();
   const { connected } = useWebSocket();
   const [, setLocation] = useLocation();
+  const [loadingDirections, setLoadingDirections] = useState<string | null>(null);
 
   const { data: queues = [], isLoading } = useQuery<QueueWithDetails[]>({
     queryKey: ['/api/queues/my'],
@@ -40,27 +42,151 @@ export default function Queue() {
     },
   });
 
-  // Open Google Maps with salon location
-  const openDirections = (salon: any) => {
-    console.log('Opening directions for salon:', {
-      latitude: salon.latitude,
-      longitude: salon.longitude,
-      fullAddress: salon.fullAddress,
-      location: salon.location
-    });
-    
-    if (salon.latitude && salon.longitude) {
-      // Use exact coordinates for precise navigation
-      const url = `https://www.google.com/maps/dir/?api=1&destination=${salon.latitude},${salon.longitude}&travelmode=driving`;
-      console.log('Using coordinates URL:', url);
-      window.open(url, '_blank');
-    } else {
-      // Fallback to address search
-      const query = encodeURIComponent(salon.fullAddress || salon.location);
-      const url = `https://www.google.com/maps/dir/?api=1&destination=${query}&travelmode=driving`;
-      console.log('Using address URL:', url);
-      window.open(url, '_blank');
+  // Get user's current location with high accuracy and open directions
+  const openDirections = (salon: any, queueId: string) => {
+    setLoadingDirections(queueId);
+
+    if (!navigator.geolocation) {
+      toast({
+        title: "Location not supported",
+        description: "Your browser doesn't support location services.",
+        variant: "destructive",
+      });
+      setLoadingDirections(null);
+      return;
     }
+
+    let bestPosition: GeolocationPosition | null = null;
+    let watchId: number | null = null;
+    let timeoutId: NodeJS.Timeout;
+
+    const openMapsWithLocation = (userLat: number, userLng: number) => {
+      console.log('Opening directions with user location:', {
+        userLocation: { lat: userLat, lng: userLng },
+        salonLocation: { lat: salon.latitude, lng: salon.longitude },
+        salon: salon.name
+      });
+
+      if (salon.latitude && salon.longitude) {
+        // Use exact coordinates for both origin and destination
+        const url = `https://www.google.com/maps/dir/${userLat},${userLng}/${salon.latitude},${salon.longitude}/?travelmode=driving`;
+        console.log('Using precise coordinates URL:', url);
+        window.open(url, '_blank');
+      } else {
+        // Fallback to address search with user location as origin
+        const query = encodeURIComponent(salon.fullAddress || salon.location);
+        const url = `https://www.google.com/maps/dir/${userLat},${userLng}/${query}/?travelmode=driving`;
+        console.log('Using address with user location URL:', url);
+        window.open(url, '_blank');
+      }
+      setLoadingDirections(null);
+    };
+
+    const processPosition = (position: GeolocationPosition) => {
+      const { latitude: lat, longitude: lng, accuracy: acc } = position.coords;
+
+      // If this is the first position or it's more accurate than the previous one
+      if (!bestPosition || (acc && bestPosition.coords.accuracy && acc < bestPosition.coords.accuracy)) {
+        bestPosition = position;
+
+        // If accuracy is good enough (less than 50m), use this position
+        if (acc && acc < 50) {
+          if (watchId !== null) {
+            navigator.geolocation.clearWatch(watchId);
+            watchId = null;
+          }
+          clearTimeout(timeoutId);
+          openMapsWithLocation(lat, lng);
+          return;
+        }
+      }
+    };
+
+    const handleError = (error: GeolocationPositionError) => {
+      console.error("Geolocation failed:", error);
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+      clearTimeout(timeoutId);
+
+      // Show error message based on error type
+      let errorMessage = "Failed to get your location.";
+      if (error.code === 1) {
+        errorMessage = "Location access denied. Please enable location services and try again.";
+      } else if (error.code === 2) {
+        errorMessage = "Location unavailable. Please check your GPS settings.";
+      } else if (error.code === 3) {
+        errorMessage = "Location request timed out. Please try again.";
+      }
+
+      toast({
+        title: "Location Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      setLoadingDirections(null);
+    };
+
+    // First, try to get a quick position
+    navigator.geolocation.getCurrentPosition(
+      processPosition,
+      () => {
+        // If quick position fails, start watching for high accuracy
+        watchId = navigator.geolocation.watchPosition(
+          processPosition,
+          handleError,
+          {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 0, // Always get fresh location for directions
+          }
+        );
+      },
+      {
+        enableHighAccuracy: false, // Quick first attempt
+        timeout: 5000,
+        maximumAge: 60000, // 1 minute cache for quick attempt
+      }
+    );
+
+    // Start high-accuracy watching immediately for better results
+    watchId = navigator.geolocation.watchPosition(
+      processPosition,
+      handleError,
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0, // Always get fresh location for directions
+      }
+    );
+
+    // Set a maximum time limit for location detection
+    timeoutId = setTimeout(() => {
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+
+      // Use the best position we have, even if not ideal
+      if (bestPosition) {
+        const { latitude: lat, longitude: lng } = bestPosition.coords;
+        openMapsWithLocation(lat, lng);
+      } else {
+        toast({
+          title: "Location Timeout",
+          description: "Couldn't get precise location. Opening directions without your current location.",
+        });
+        // Fallback to original behavior
+        if (salon.latitude && salon.longitude) {
+          const url = `https://www.google.com/maps/dir/?api=1&destination=${salon.latitude},${salon.longitude}&travelmode=driving`;
+          window.open(url, '_blank');
+        } else {
+          const query = encodeURIComponent(salon.fullAddress || salon.location);
+          const url = `https://www.google.com/maps/dir/?api=1&destination=${query}&travelmode=driving`;
+          window.open(url, '_blank');
+        }
+        setLoadingDirections(null);
+      }
+    }, 10000); // 10 seconds max for directions
   };
 
   if (!user) {
@@ -118,7 +244,7 @@ export default function Queue() {
               <p className="text-muted-foreground mb-6">
                 You haven't joined any queues yet. Find a salon and join your first queue!
               </p>
-              <Button 
+              <Button
                 data-testid="button-find-salons"
                 onClick={() => setLocation('/')}
               >
@@ -146,24 +272,24 @@ export default function Queue() {
                               <MapPin className="h-4 w-4" />
                               <span data-testid={`text-salon-location-${queue.id}`}>{queue.salon?.location}</span>
                             </p>
-                            
+
                             {/* Position Display */}
                             {queue.status === 'waiting' ? (
                               <div className="relative mb-6">
                                 <svg className="w-32 h-32 mx-auto transform -rotate-90">
-                                  <circle 
-                                    cx="64" cy="64" r="56" 
-                                    stroke="currentColor" 
-                                    strokeWidth="8" 
-                                    fill="none" 
+                                  <circle
+                                    cx="64" cy="64" r="56"
+                                    stroke="currentColor"
+                                    strokeWidth="8"
+                                    fill="none"
                                     className="text-muted/20"
                                   />
-                                  <circle 
-                                    cx="64" cy="64" r="56" 
-                                    stroke="currentColor" 
-                                    strokeWidth="8" 
-                                    fill="none" 
-                                    strokeDasharray="352" 
+                                  <circle
+                                    cx="64" cy="64" r="56"
+                                    stroke="currentColor"
+                                    strokeWidth="8"
+                                    fill="none"
+                                    strokeDasharray="352"
                                     strokeDashoffset={352 - (352 * (queue.position > 0 && queue.totalInQueue ? Math.max(0, 1 - queue.position / queue.totalInQueue) : 0))}
                                     className="text-primary"
                                   />
@@ -186,7 +312,7 @@ export default function Queue() {
                                 </div>
                               </div>
                             )}
-                            
+
                             {/* Wait Time */}
                             <div className="text-center mb-6">
                               <p className="text-3xl font-bold text-primary" data-testid={`text-estimated-wait-${queue.id}`}>
@@ -240,7 +366,7 @@ export default function Queue() {
 
                             <div>
                               <h4 className="font-semibold text-foreground mb-2">Status</h4>
-                              <Badge 
+                              <Badge
                                 variant={queue.status === 'in-progress' ? 'default' : 'secondary'}
                                 className="mb-2"
                                 data-testid={`badge-status-${queue.id}`}
@@ -254,17 +380,18 @@ export default function Queue() {
 
                             {/* Action Buttons */}
                             <div className="flex space-x-3 pt-4">
-                              <Button 
-                                variant="outline" 
+                              <Button
+                                variant="outline"
                                 className="flex-1"
-                                onClick={() => openDirections(queue.salon)}
+                                onClick={() => openDirections(queue.salon, queue.id)}
+                                disabled={loadingDirections === queue.id}
                                 data-testid={`button-directions-${queue.id}`}
                               >
                                 <Navigation className="h-4 w-4 mr-2" />
-                                Get Directions
+                                {loadingDirections === queue.id ? 'Getting Location...' : 'Get Directions'}
                               </Button>
-                              <Button 
-                                variant="destructive" 
+                              <Button
+                                variant="destructive"
                                 className="flex-1"
                                 disabled={leaveQueueMutation.isPending}
                                 onClick={() => leaveQueueMutation.mutate(queue.id)}
@@ -296,15 +423,15 @@ export default function Queue() {
                               {queue.salon?.name}
                             </h4>
                             <p className="text-sm text-muted-foreground" data-testid={`text-history-service-${queue.id}`}>
-                              {queue.services && queue.services.length > 0 ? 
-                                (queue.services.length > 1 ? 
-                                  `${queue.services.length} services` : 
-                                  queue.services[0].name) : 
+                              {queue.services && queue.services.length > 0 ?
+                                (queue.services.length > 1 ?
+                                  `${queue.services.length} services` :
+                                  queue.services[0].name) :
                                 queue.service?.name} • {new Date(queue.timestamp).toLocaleDateString()}
                             </p>
                           </div>
                           <div className="text-right">
-                            <Badge 
+                            <Badge
                               variant={queue.status === 'completed' ? 'default' : 'destructive'}
                               data-testid={`badge-history-status-${queue.id}`}
                             >
